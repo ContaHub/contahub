@@ -1,4 +1,14 @@
+node_modules
+dist
+build
+.next
+.turbo
+.env
+.env.local
+*.log
+.DS_Store
+.vscode
+*.db
+coverage
 github-recovery-codes.txt
 *.skill
-*.txt
-env.example

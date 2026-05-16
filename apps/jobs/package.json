@@ -1,0 +1,1 @@
+{ "name": "@contahub/jobs", "version": "0.0.1", "private": true, "scripts": { "dev": "tsx watch src/index.ts", "build": "tsc" }, "dependencies": { "@contahub/database": "workspace:*", "bullmq": "^5.0.0" }, "devDependencies": { "tsx": "^4.7.0", "typescript": "^5.4.0" } }
