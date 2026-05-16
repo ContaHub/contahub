@@ -109,7 +109,7 @@ pnpm db:seed      # Popula banco com dados de exemplo
 ## Time
 
 - **Pietro** — Co-fundador
-- **[Seu nome]** — Co-fundador
+- **William** — Co-fundador
 
 ---
 
