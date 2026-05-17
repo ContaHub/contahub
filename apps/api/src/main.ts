@@ -6,7 +6,7 @@ async function bootstrap() {
   app.setGlobalPrefix("api/v1");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableCors({ origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000", credentials: true });
-  await app.listen(process.env.PORT || 3001);
+  await app.listen(process.env.PORT || 3002);
   console.log("🚀 ContaHub API rodando em http://localhost:3001/api/v1");
 }
 bootstrap();
