@@ -1,20 +1,98 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-enum UserRole { OWNER ADMIN ACCOUNTANT ASSISTANT }
-enum ModuleKey { CRM FISCAL DOCUMENTS COMMUNICATION CLIENT_PORTAL FINANCIAL BI AUTOMATION }
-enum SubscriptionStatus { TRIAL ACTIVE PAST_DUE CANCELED SUSPENDED }
-enum SubscriptionPlan { STARTER PRO ENTERPRISE }
-enum ObligationType { DARF DAS DEFIS SPED_CONTABIL SPED_FISCAL SPED_CONTRIBUICOES ECFD DCTF REINF ESOCIAL DIRF RAIS GIA PGDAS OUTRO }
-enum ObligationStatus { PENDING IN_PROGRESS COMPLETED OVERDUE CANCELED }
-enum DocumentStatus { PENDING_UPLOAD UPLOADED UNDER_REVIEW APPROVED REJECTED }
-enum CommunicationChannel { WHATSAPP EMAIL PORTAL PHONE }
-enum ClientStatus { ACTIVE INACTIVE SUSPENDED }
-enum TaxRegime { SIMPLES_NACIONAL LUCRO_PRESUMIDO LUCRO_REAL MEI ISENTO }
+
+enum UserRole {
+  OWNER
+  ADMIN
+  ACCOUNTANT
+  ASSISTANT
+}
+
+enum ModuleKey {
+  CRM
+  FISCAL
+  DOCUMENTS
+  COMMUNICATION
+  CLIENT_PORTAL
+  FINANCIAL
+  BI
+  AUTOMATION
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  SUSPENDED
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum ObligationType {
+  DARF
+  DAS
+  DEFIS
+  SPED_CONTABIL
+  SPED_FISCAL
+  SPED_CONTRIBUICOES
+  ECFD
+  DCTF
+  REINF
+  ESOCIAL
+  DIRF
+  RAIS
+  GIA
+  PGDAS
+  OUTRO
+}
+
+enum ObligationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELED
+}
+
+enum DocumentStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum CommunicationChannel {
+  WHATSAPP
+  EMAIL
+  PORTAL
+  PHONE
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum TaxRegime {
+  SIMPLES_NACIONAL
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+  MEI
+  ISENTO
+}
 
 model Workspace {
   id           String   @id @default(cuid())
@@ -27,6 +105,7 @@ model Workspace {
   timezone     String   @default("America/Sao_Paulo")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
   users          WorkspaceUser[]
   clients        Client[]
   modules        WorkspaceModule[]
@@ -35,21 +114,26 @@ model Workspace {
   obligations    FiscalObligation[]
   communications Communication[]
   invoices       Invoice[]
+
   @@index([slug])
 }
+
 model WorkspaceUser {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   workspaceId String
   clerkUserId String
-  role        UserRole  @default(ACCOUNTANT)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role        UserRole @default(ACCOUNTANT)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
   @@unique([workspaceId, clerkUserId])
   @@index([workspaceId])
   @@index([clerkUserId])
 }
+
 model Client {
   id            String       @id @default(cuid())
   workspaceId   String
@@ -72,14 +156,17 @@ model Client {
   tags          String[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+
   workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   obligations    FiscalObligation[]
   documents      Document[]
   communications Communication[]
+
   @@unique([workspaceId, cnpj])
   @@index([workspaceId])
   @@index([workspaceId, status])
 }
+
 model FiscalObligation {
   id              String           @id @default(cuid())
   workspaceId     String
@@ -96,13 +183,16 @@ model FiscalObligation {
   notes           String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([workspaceId])
   @@index([workspaceId, clientId])
   @@index([workspaceId, status])
   @@index([workspaceId, dueDate])
 }
+
 model Document {
   id          String         @id @default(cuid())
   workspaceId String
@@ -122,11 +212,14 @@ model Document {
   createdBy   String
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([workspaceId])
   @@index([workspaceId, clientId])
 }
+
 model Communication {
   id          String               @id @default(cuid())
   workspaceId String
@@ -140,21 +233,27 @@ model Communication {
   readAt      DateTime?
   sentBy      String?
   createdAt   DateTime             @default(now())
+
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   @@index([workspaceId])
   @@index([workspaceId, clientId])
 }
+
 model WorkspaceModule {
   id          String    @id @default(cuid())
   workspaceId String
   moduleKey   ModuleKey
   isEnabled   Boolean   @default(true)
   enabledAt   DateTime  @default(now())
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
   @@unique([workspaceId, moduleKey])
   @@index([workspaceId])
 }
+
 model Subscription {
   id                  String             @id @default(cuid())
   workspaceId         String             @unique
@@ -168,9 +267,11 @@ model Subscription {
   canceledAt          DateTime?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
+
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   invoices  Invoice[]
 }
+
 model Invoice {
   id             String    @id @default(cuid())
   workspaceId    String
@@ -183,7 +284,9 @@ model Invoice {
   paymentMethod  String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+
   workspace    Workspace    @relation(fields: [workspaceId], references: [id])
   subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
   @@index([workspaceId])
 }
