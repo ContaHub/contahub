@@ -12,3 +12,4 @@ build
 coverage
 github-recovery-codes.txt
 *.skill
+*.sh
