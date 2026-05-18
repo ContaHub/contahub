@@ -128,17 +128,25 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
     }
   }
 
-  function handlePersonTypeChange(type: PersonType) {
-    setPersonType(type);
-    // Reseta campos específicos de cada tipo
-    setForm((prev) => ({
-      ...prev,
-      cnpj: "",
-      cpf: "",
-      taxRegime: type === "PF" ? "ISENTO" : "SIMPLES_NACIONAL",
-    }));
-    setCnpjFound(false);
-  }
+function handlePersonTypeChange(type: PersonType) {
+  setPersonType(type);
+  setForm({
+    name: "",
+    tradeName: "",
+    cnpj: "",
+    cpf: "",
+    taxRegime: type === "PF" ? "ISENTO" : "SIMPLES_NACIONAL",
+    email: "",
+    phone: "",
+    whatsapp: "",
+    zipCode: "",
+    street: "",
+    city: "",
+    state: "",
+    notes: "",
+  });
+  setCnpjFound(false);
+}
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
