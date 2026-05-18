@@ -76,9 +76,9 @@ pnpm dev
 ```
 
 ### Apps rodando
-- **Web**: http://localhost:3000
-- **API**: http://localhost:3001/api/v1
-- **Health check**: http://localhost:3001/api/v1/health
+- **Web**: http://localhost:3010
+- **API**: http://localhost:3002/api/v1
+- **Health check**: http://localhost:3002/api/v1/health
 
 ---
 

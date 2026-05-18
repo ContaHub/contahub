@@ -88,8 +88,8 @@ R2_SECRET_ACCESS_KEY=""
 R2_BUCKET_NAME="contahub-documents"
 REDIS_URL="redis://localhost:6379"
 RESEND_API_KEY="re_..."
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-NEXT_PUBLIC_API_URL="http://localhost:3001"
+NEXT_PUBLIC_APP_URL="http://localhost:3010"
+NEXT_PUBLIC_API_URL="http://localhost:3002"
 NODE_ENV="development"
 EOF
 
@@ -422,9 +422,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix("api/v1");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-  app.enableCors({ origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000", credentials: true });
-  await app.listen(process.env.PORT || 3001);
-  console.log("🚀 ContaHub API rodando em http://localhost:3001/api/v1");
+  app.enableCors({ origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3010", credentials: true });
+  await app.listen(process.env.PORT || 3002);
+  console.log("🚀 ContaHub API rodando em http://localhost:3002/api/v1");
 }
 bootstrap();
 EOF
