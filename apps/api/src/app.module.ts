@@ -6,6 +6,7 @@ import { ClientsModule } from "./modules/clients/clients.module";
 import { FiscalModule } from "./modules/fiscal/fiscal.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { DocumentsModule } from "./modules/documents/documents.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
     FiscalModule,
     DashboardModule,
     NotificationsModule,
+    DocumentsModule,
   ],
 })
 export class AppModule {
