@@ -7,6 +7,7 @@ import { FiscalModule } from "./modules/fiscal/fiscal.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
+import { PortalModule } from "./modules/portal/portal.module";
 
 @Module({
   imports: [
@@ -17,13 +18,18 @@ import { DocumentsModule } from "./modules/documents/documents.module";
     DashboardModule,
     NotificationsModule,
     DocumentsModule,
+    PortalModule,
   ],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(WorkspaceMiddleware)
-      .exclude({ path: "api/v1/health", method: RequestMethod.GET })
+      .exclude(
+        { path: "api/v1/health", method: RequestMethod.GET },
+        // Rotas do portal são públicas — cliente se autentica via Clerk diretamente
+        { path: "api/v1/portal/(.*)", method: RequestMethod.ALL },
+      )
       .forRoutes("*");
   }
 }

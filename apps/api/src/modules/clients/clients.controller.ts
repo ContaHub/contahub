@@ -15,3 +15,5 @@ export class ClientsController {
   @Put(":id") update(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateClientDto) { return this.clientsService.update(req.workspaceId, id, dto); }
   @Delete(":id") @HttpCode(HttpStatus.NO_CONTENT) remove(@Req() req: Request, @Param("id") id: string) { return this.clientsService.remove(req.workspaceId, id); }
 }
+
+// PATCH /api/v1/clients/:id/portal — habilita/desabilita portal do cliente
