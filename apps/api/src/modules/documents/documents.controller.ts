@@ -1,9 +1,7 @@
 import {
-  Controller, Get, Post, Delete,
+  Controller, Get, Post, Put, Delete,
   Param, Query, Req, Body,
-  UseInterceptors, UploadedFile,
-  ParseFilePipe, MaxFileSizeValidator,
-  UseGuards,
+  UseInterceptors, UploadedFile, UseGuards, HttpCode, HttpStatus,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Request } from "express";
@@ -28,25 +26,19 @@ export class DocumentsController {
   }
 
   @Post("upload")
-  @UseInterceptors(
-    FileInterceptor("file", {
-      storage: memoryStorage(), // Mantém em memória para enviar ao Supabase
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-    })
-  )
+  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
   async upload(
     @Req() req: Request,
     @UploadedFile() file: Express.Multer.File,
     @Body("clientId") clientId: string,
     @Body("description") description?: string
   ) {
-    return this.documentsService.upload(
-      req.workspaceId,
-      clientId,
-      file,
-      req.clerkUserId,
-      description
-    );
+    return this.documentsService.upload(req.workspaceId, clientId, file, req.clerkUserId, description);
+  }
+
+  @Put(":id/review")
+  async sendForReview(@Req() req: Request, @Param("id") id: string) {
+    return this.documentsService.sendForReview(req.workspaceId, id);
   }
 
   @Delete(":id")

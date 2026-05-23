@@ -38,7 +38,9 @@ export async function getWorkspaceBySlug(slug: string): Promise<{ data: Workspac
 
 // Busca documentos do cliente no portal
 export async function getPortalDocuments(slug: string, clientId: string): Promise<{ data: PortalDocument[] }> {
-  const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${clientId}`);
+  const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${clientId}?t=${Date.now()}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Erro ao buscar documentos");
   return res.json();
 }

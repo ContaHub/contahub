@@ -21,8 +21,23 @@ export async function getDownloadUrl(id: string): Promise<{ data: { url: string 
   return apiFetch(`/documents/${id}/download`);
 }
 
-export async function deleteDocument(id: string): Promise<{ message: string }> {
-  return apiFetch(`/documents/${id}`, { method: "DELETE" });
+export async function deleteDocument(id: string): Promise<void> {
+  const tokenRes = await fetch("/api/auth/token");
+  const { token } = await tokenRes.json();
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+  const res = await fetch(`${API_URL}/api/v1/documents/${id}`, {
+    method: "DELETE",
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: "Erro ao remover" }));
+    throw new Error(error.message);
+  }
+  // Não tenta parsear JSON — DELETE retorna body vazio
 }
 
 // Upload via FormData — não usa apiFetch pois precisa de multipart
@@ -72,4 +87,9 @@ export function getFileIcon(mimeType?: string): string {
   if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return "📊";
   if (mimeType.includes("xml")) return "🗂️";
   return "📄";
+}
+
+// Envia documento para aprovação do cliente (muda status para UNDER_REVIEW)
+export async function sendForReview(id: string): Promise<{ message: string }> {
+  return apiFetch(`/documents/${id}/review`, { method: "PUT" });
 }

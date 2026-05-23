@@ -23,13 +23,8 @@ import { PortalModule } from "./modules/portal/portal.module";
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(WorkspaceMiddleware)
-      .exclude(
-        { path: "api/v1/health", method: RequestMethod.GET },
-        // Rotas do portal são públicas — cliente se autentica via Clerk diretamente
-        { path: "api/v1/portal/(.*)", method: RequestMethod.ALL },
-      )
-      .forRoutes("*");
+    // Middleware aplicado em todas as rotas
+    // A verificação de rotas públicas é feita dentro do próprio middleware
+    consumer.apply(WorkspaceMiddleware).forRoutes("*");
   }
 }
