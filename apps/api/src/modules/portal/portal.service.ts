@@ -69,6 +69,22 @@ export class PortalService {
     });
     return { data: documents };
   }
+
+  async getClientDocumentDownloadUrl(workspaceSlug: string, documentId: string) {
+  this.logger.log(`[getDownloadUrl] slug=${workspaceSlug} docId=${documentId}`);
+  const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
+  if (!workspace) throw new NotFoundException("Escritório não encontrado");
+
+  const doc = await prisma.document.findFirst({
+    where: { id: documentId, workspaceId: workspace.id },
+  });
+  if (!doc?.storageKey) throw new NotFoundException("Documento não encontrado");
+
+  const url = await this.supabase.getSignedUrl(doc.storageKey);
+  if (!url) throw new BadRequestException("Erro ao gerar URL de download");
+
+  return { data: { url, expiresIn: 3600 } };
+}
  
   async getPendingReports(workspaceSlug: string, clientId: string) {
     this.logger.log(`[getPendingReports] slug=${workspaceSlug} clientId=${clientId}`);

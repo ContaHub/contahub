@@ -56,6 +56,15 @@ export class PortalController {
     return this.portalService.clientUpload(slug, clientId, file, description);
   }
 
+  // GET /api/v1/portal/:slug/documents/:documentId/download
+@Get(":slug/documents/:documentId/download")
+async getDownloadUrl(
+  @Param("slug") slug: string,
+  @Param("documentId") documentId: string
+) {
+  return this.portalService.getClientDocumentDownloadUrl(slug, documentId);
+}
+
   // Remoção de documento enviado pelo cliente
   @Delete(":slug/documents/:documentId")
   async deleteClientDocument(

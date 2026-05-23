@@ -57,18 +57,21 @@ export default function ClientDocumentsPage() {
     if (user) load();
   }, [user, slug]);
 
-  async function handleDownload(doc: PortalDocument) {
-    setDownloading(doc.id);
-    try {
-      const token = await getToken();
-      const url = await getPortalDownloadUrl(doc.id, token || "");
-      window.open(url, "_blank");
-    } catch {
-      alert("Erro ao baixar documento");
-    } finally {
-      setDownloading(null);
-    }
+async function handleDownload(doc: PortalDocument) {
+  setDownloading(doc.id);
+  try {
+    const res = await fetch(
+      `${API_URL}/api/v1/portal/${slug}/documents/${doc.id}/download`
+    );
+    if (!res.ok) throw new Error("Erro ao gerar link");
+    const { data } = await res.json();
+    window.open(data.url, "_blank");
+  } catch {
+    alert("Erro ao baixar documento");
+  } finally {
+    setDownloading(null);
   }
+}
 
   async function handleDelete(doc: PortalDocument) {
     // Só permite remover documentos enviados pelo próprio cliente
