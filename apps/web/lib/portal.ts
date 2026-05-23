@@ -29,32 +29,35 @@ export interface PortalObligation {
   amount?: number;
 }
 
-// Busca info pública do escritório pelo slug
+// Busca info pública do escritório pelo slug (Pública)
 export async function getWorkspaceBySlug(slug: string): Promise<{ data: WorkspacePublic }> {
   const res = await fetch(`${API_URL}/api/v1/portal/${slug}`);
   if (!res.ok) throw new Error("Escritório não encontrado");
   return res.json();
 }
 
-// Busca documentos do cliente no portal
-export async function getPortalDocuments(slug: string, clientId: string): Promise<{ data: PortalDocument[] }> {
+// Busca documentos do cliente no portal (Protegida)
+export async function getPortalDocuments(slug: string, clientId: string, token: string): Promise<{ data: PortalDocument[] }> {
   const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${clientId}?t=${Date.now()}`, {
+    headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Erro ao buscar documentos");
   return res.json();
 }
 
-// Busca obrigações do cliente no portal
-export async function getPortalObligations(slug: string, clientId: string): Promise<{ data: PortalObligation[] }> {
-  const res = await fetch(`${API_URL}/api/v1/portal/${slug}/obligations/${clientId}`);
+// Busca obrigações do cliente no portal (Protegida)
+export async function getPortalObligations(slug: string, clientId: string, token: string): Promise<{ data: PortalObligation[] }> {
+  const res = await fetch(`${API_URL}/api/v1/portal/${slug}/obligations/${clientId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) throw new Error("Erro ao buscar obrigações");
   return res.json();
 }
 
-// Busca URL de download de documento
-export async function getPortalDownloadUrl(documentId: string, token: string): Promise<string> {
-  const res = await fetch(`${API_URL}/api/v1/documents/${documentId}/download`, {
+// Busca URL de download de documento do portal do cliente (Protegida)
+export async function getPortalClientDownloadUrl(slug: string, documentId: string, token: string): Promise<string> {
+  const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${documentId}/download`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Erro ao gerar link de download");

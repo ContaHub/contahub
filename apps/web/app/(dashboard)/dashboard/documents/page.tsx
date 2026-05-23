@@ -99,7 +99,7 @@ export default function DocumentsPage() {
           <div className="text-center py-16">
             <p className="text-3xl mb-3">📁</p>
             <p className="text-gray-500 font-medium">Nenhum documento enviado</p>
-            <p className="text-gray-400 text-sm mt-1">Clique em "Enviar documento" para começar</p>
+            <p className="text-gray-400 text-sm mt-1">Clique em &quot;Enviar documento&quot; para começar</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

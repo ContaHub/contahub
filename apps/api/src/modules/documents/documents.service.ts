@@ -4,11 +4,27 @@ import { SupabaseService } from "../../common/services/supabase.service";
 
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
-  "image/jpeg", "image/png", "image/webp",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "text/xml", "application/xml",
+  "text/xml",
+  "application/xml",
 ];
+
+const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "webp", "xls", "xlsx", "xml"];
+
+function validateFileType(file: Express.Multer.File): void {
+  if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    throw new BadRequestException(`Tipo de arquivo não permitido: ${file.mimetype}`);
+  }
+
+  const extension = file.originalname.split(".").pop()?.toLowerCase() ?? "";
+  if (!ALLOWED_EXTENSIONS.includes(extension)) {
+    throw new BadRequestException(`Extensão de arquivo não permitida: .${extension}`);
+  }
+}
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -43,9 +59,7 @@ export class DocumentsService {
   }
 
   async upload(workspaceId: string, clientId: string, file: Express.Multer.File, createdBy: string, description?: string) {
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      throw new BadRequestException("Tipo de arquivo não permitido. Aceitos: PDF, imagens, Excel, XML");
-    }
+    validateFileType(file);
     if (file.size > MAX_FILE_SIZE) throw new BadRequestException("Arquivo muito grande. Máximo: 10MB");
 
     const client = await prisma.client.findFirst({ where: { id: clientId, workspaceId } });

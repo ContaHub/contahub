@@ -1,4 +1,4 @@
-import { getWorkspaceBySlug } from "@/lib/portal";
+import { getWorkspaceBySlug, WorkspacePublic } from "@/lib/portal";
 import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -16,7 +16,12 @@ export default async function PortalLoginPage({ params }: Props) {
   }
 
   // Busca info pública do escritório para personalizar a tela
-  let workspace = { name: "Escritório Contábil", primaryColor: "#2563EB" };
+  let workspace: WorkspacePublic = {
+    id: "",
+    slug: params.slug,
+    name: "Escritório Contábil",
+    primaryColor: "#2563EB",
+  };
   try {
     const res = await getWorkspaceBySlug(params.slug);
     workspace = res.data;
@@ -32,7 +37,7 @@ export default async function PortalLoginPage({ params }: Props) {
         <div className="text-center mb-8">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4"
-            style={{ backgroundColor: workspace.primaryColor || "#2563EB" }}
+            style={{ backgroundColor: workspace.primaryColor ?? "#2563EB" }}
           >
             {workspace.name.charAt(0).toUpperCase()}
           </div>
@@ -48,11 +53,11 @@ export default async function PortalLoginPage({ params }: Props) {
             </p>
             <SignInButton
               mode="modal"
-              afterSignInUrl={`/portal/${params.slug}/dashboard`}
+              forceRedirectUrl={`/portal/${params.slug}/dashboard`}
             >
               <button
                 className="w-full py-3 px-4 text-white text-sm font-medium rounded-xl transition-colors"
-                style={{ backgroundColor: workspace.primaryColor || "#2563EB" }}
+                style={{ backgroundColor: workspace.primaryColor ?? "#2563EB" }}
               >
                 Entrar no portal
               </button>

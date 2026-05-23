@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useUser, useAuth } from "@clerk/nextjs";
-import { getPortalDownloadUrl, formatFileSize } from "@/lib/portal";
+import { getPortalClientDownloadUrl, formatFileSize } from "@/lib/portal";
 
 interface Report {
   id: string;
@@ -30,8 +30,10 @@ export default function ClientReportsPage() {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
-  async function loadReports(cId: string) {
-    const res = await fetch(`${API_URL}/api/v1/portal/${slug}/reports/${cId}`);
+  async function loadReports(cId: string, token: string) {
+    const res = await fetch(`${API_URL}/api/v1/portal/${slug}/reports/${cId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     if (res.ok) {
       const { data } = await res.json();
       setReports(data);
@@ -43,32 +45,59 @@ export default function ClientReportsPage() {
     async function init() {
       const email = user?.primaryEmailAddress?.emailAddress;
       if (!email) return;
-      const res = await fetch(`${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`);
-      if (!res.ok) return;
-      const { data } = await res.json();
-      setClientId(data.id);
-      await loadReports(data.id);
+      try {
+        const token = await getToken();
+        if (!token) return;
+
+        const res = await fetch(
+          `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) return;
+        const { data } = await res.json();
+        setClientId(data.id);
+        await loadReports(data.id, token);
+      } catch {
+        setLoading(false);
+      }
     }
     if (user) init();
   }, [user, slug]);
 
   async function handleDownload(report: Report) {
-    const token = await getToken();
-    const url = await getPortalDownloadUrl(report.id, token || "");
-    window.open(url, "_blank");
+    setDownloading(report.id);
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const url = await getPortalClientDownloadUrl(slug, report.id, token);
+      window.open(url, "_blank");
+    } catch {
+      alert("Erro ao baixar documento");
+    } finally {
+      setDownloading(null);
+    }
   }
+
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   async function handleApprove(reportId: string) {
     setProcessing(reportId);
     try {
+      const token = await getToken();
+      if (!token) return;
+
       const res = await fetch(`${API_URL}/api/v1/portal/${slug}/reports/${reportId}/approve`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify({ clientId }),
       });
       if (res.ok) {
         setSuccessMsg("✅ Relatório aprovado com sucesso!");
-        await loadReports(clientId);
+        await loadReports(clientId, token);
         setTimeout(() => setSuccessMsg(""), 4000);
       }
     } finally {
@@ -84,15 +113,21 @@ export default function ClientReportsPage() {
     }
     setProcessing(reportId);
     try {
+      const token = await getToken();
+      if (!token) return;
+
       const res = await fetch(`${API_URL}/api/v1/portal/${slug}/reports/${reportId}/request-revision`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify({ clientId, notes }),
       });
       if (res.ok) {
         setSuccessMsg("📝 Revisão solicitada. O escritório será notificado.");
         setShowRevisionInput(null);
-        await loadReports(clientId);
+        await loadReports(clientId, token);
         setTimeout(() => setSuccessMsg(""), 4000);
       }
     } finally {

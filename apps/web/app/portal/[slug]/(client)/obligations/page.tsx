@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { getPortalObligations, PortalObligation, OBLIGATION_LABELS, STATUS_CONFIG, MONTHS } from "@/lib/portal";
 
 export default function ClientObligationsPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [obligations, setObligations] = useState<PortalObligation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -18,12 +19,18 @@ export default function ClientObligationsPage() {
       if (!email) return;
 
       try {
+        const token = await getToken();
+        if (!token) return;
+
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
-        const res = await fetch(`${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`);
+        const res = await fetch(
+          `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         if (!res.ok) return;
         const { data } = await res.json();
 
-        const obs = await getPortalObligations(slug, data.id);
+        const obs = await getPortalObligations(slug, data.id, token);
         setObligations(obs.data);
       } finally {
         setLoading(false);

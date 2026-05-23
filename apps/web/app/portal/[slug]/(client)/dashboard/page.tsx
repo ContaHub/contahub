@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import {
   getPortalDocuments, getPortalObligations,
@@ -18,9 +18,10 @@ export default function ClientDashboardPage() {
   const params = useParams();
   const slug = params.slug as string;
   const { user } = useUser();
+  const { getToken } = useAuth();
 
   const [documents, setDocuments] = useState<PortalDocument[]>([]);
-  const [obligations, setObligations] = useState<PortalObligation[]>([]);
+  const [obligations, setPortalObligations] = useState<PortalObligation[]>([]);
   const [clientId, setClientId] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -33,19 +34,25 @@ export default function ClientDashboardPage() {
         const email = user?.primaryEmailAddress?.emailAddress;
         if (!email) return;
 
-        const res = await fetch(`${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`);
+        const token = await getToken();
+        if (!token) return;
+
+        const res = await fetch(
+          `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         if (!res.ok) return;
         const { data } = await res.json();
 
         setClientId(data.id);
 
         const [docs, obs] = await Promise.all([
-          getPortalDocuments(slug, data.id),
-          getPortalObligations(slug, data.id),
+          getPortalDocuments(slug, data.id, token),
+          getPortalObligations(slug, data.id, token),
         ]);
 
         setDocuments(docs.data.slice(0, 3)); // Mostra 3 mais recentes
-        setObligations(obs.data.slice(0, 3));
+        setPortalObligations(obs.data.slice(0, 3));
       } catch {
         // silencia erros no demo
       } finally {

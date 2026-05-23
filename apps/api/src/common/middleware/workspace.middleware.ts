@@ -6,14 +6,13 @@ import { prisma } from "@contahub/database";
 declare global {
   namespace Express {
     interface Request {
-      workspaceId: string;
+      workspaceId?: string;
       clerkUserId: string;
-      userRole: string;
+      userRole?: string;
+      userEmail?: string;
     }
   }
 }
-
-const PUBLIC_PREFIXES = ["/api/v1/health", "/api/v1/portal"];
 
 @Injectable()
 export class WorkspaceMiddleware implements NestMiddleware {
@@ -22,7 +21,13 @@ export class WorkspaceMiddleware implements NestMiddleware {
 
     console.log(`[Middleware] path: ${path}`);
 
-    const isPublic = PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix));
+    const pathParts = path.split("/").filter(Boolean);
+    const isHealth = path.startsWith("/api/v1/health");
+    // A rota "/api/v1/portal/:slug" (comprimento 4) é pública para customizar a tela de login.
+    // Qualquer sub-rota posterior (comprimento > 4) requer autenticação do cliente.
+    const isPublicPortal = path.startsWith("/api/v1/portal") && pathParts.length === 4;
+    const isPublic = isHealth || isPublicPortal;
+
     if (isPublic) {
       console.log(`[Middleware] PUBLIC — passando direto`);
       return next();
@@ -38,6 +43,23 @@ export class WorkspaceMiddleware implements NestMiddleware {
       const payload = await clerkClient.verifyToken(token);
       const clerkUserId = payload.sub;
 
+      const isPortalRoute = path.startsWith("/api/v1/portal");
+      if (isPortalRoute) {
+        // Busca os dados do usuário no Clerk para obter o e-mail cadastrado
+        const clerkUser = await clerkClient.users.getUser(clerkUserId);
+        const email = clerkUser.emailAddresses.find(
+          (e) => e.id === clerkUser.primaryEmailAddressId
+        )?.emailAddress;
+
+        if (!email) {
+          throw new UnauthorizedException("E-mail do usuário Clerk não encontrado");
+        }
+
+        req.userEmail = email;
+        req.clerkUserId = clerkUserId;
+        return next();
+      }
+
       const workspaceUser = await prisma.workspaceUser.findFirst({
         where: { clerkUserId, isActive: true },
         select: { workspaceId: true, role: true },
@@ -52,7 +74,8 @@ export class WorkspaceMiddleware implements NestMiddleware {
       req.userRole = workspaceUser.role;
 
       next();
-    } catch {
+    } catch (err) {
+      console.error("[Middleware] Falha na autenticação:", err);
       throw new UnauthorizedException("Token inválido ou expirado");
     }
   }

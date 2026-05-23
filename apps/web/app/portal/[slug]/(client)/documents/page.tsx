@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useUser, useAuth } from "@clerk/nextjs";
 import {
-  getPortalDocuments, getPortalDownloadUrl,
+  getPortalDocuments, getPortalClientDownloadUrl,
   PortalDocument, formatFileSize,
 } from "@/lib/portal";
 
@@ -35,8 +35,8 @@ export default function ClientDocumentsPage() {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
-  async function loadDocuments(cId: string) {
-    const docs = await getPortalDocuments(slug, cId);
+  async function loadDocuments(cId: string, token: string) {
+    const docs = await getPortalDocuments(slug, cId, token);
     setDocuments(docs.data);
   }
 
@@ -45,11 +45,17 @@ export default function ClientDocumentsPage() {
       const email = user?.primaryEmailAddress?.emailAddress;
       if (!email) return;
       try {
-        const res = await fetch(`${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`);
+        const token = await getToken();
+        if (!token) return;
+
+        const res = await fetch(
+          `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         if (!res.ok) return;
         const { data } = await res.json();
         setClientId(data.id);
-        await loadDocuments(data.id);
+        await loadDocuments(data.id, token);
       } finally {
         setLoading(false);
       }
@@ -57,21 +63,20 @@ export default function ClientDocumentsPage() {
     if (user) load();
   }, [user, slug]);
 
-async function handleDownload(doc: PortalDocument) {
-  setDownloading(doc.id);
-  try {
-    const res = await fetch(
-      `${API_URL}/api/v1/portal/${slug}/documents/${doc.id}/download`
-    );
-    if (!res.ok) throw new Error("Erro ao gerar link");
-    const { data } = await res.json();
-    window.open(data.url, "_blank");
-  } catch {
-    alert("Erro ao baixar documento");
-  } finally {
-    setDownloading(null);
+  async function handleDownload(doc: PortalDocument) {
+    setDownloading(doc.id);
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const url = await getPortalClientDownloadUrl(slug, doc.id, token);
+      window.open(url, "_blank");
+    } catch {
+      alert("Erro ao baixar documento");
+    } finally {
+      setDownloading(null);
+    }
   }
-}
 
   async function handleDelete(doc: PortalDocument) {
     // Só permite remover documentos enviados pelo próprio cliente
@@ -85,11 +90,15 @@ async function handleDownload(doc: PortalDocument) {
 
     setDeleting(doc.id);
     try {
+      const token = await getToken();
+      if (!token) return;
+
       const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${doc.id}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Erro ao remover documento");
-      await loadDocuments(clientId);
+      await loadDocuments(clientId, token);
     } catch {
       alert("Erro ao remover documento");
     } finally {
@@ -106,12 +115,16 @@ async function handleDownload(doc: PortalDocument) {
     setUploadSuccess("");
 
     try {
+      const token = await getToken();
+      if (!token) return;
+
       const formData = new FormData();
       formData.append("file", file);
       if (description) formData.append("description", description);
 
       const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${clientId}/upload`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
@@ -123,7 +136,7 @@ async function handleDownload(doc: PortalDocument) {
       setUploadSuccess("Documento enviado com sucesso! O escritório será notificado.");
       setDescription("");
       if (fileInputRef.current) fileInputRef.current.value = "";
-      await loadDocuments(clientId);
+      await loadDocuments(clientId, token);
     } catch (err: any) {
       setUploadError(err.message);
     } finally {

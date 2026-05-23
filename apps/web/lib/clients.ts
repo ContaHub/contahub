@@ -5,11 +5,15 @@ export interface Client {
   name: string;
   tradeName?: string;
   cnpj: string;
+  cpf?: string;
   taxRegime: string;
   status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
   email?: string;
   phone?: string;
   whatsapp?: string;
+  portalEnabled?: boolean;
+  portalEmail?: string;
+  notes?: string;
   tags: string[];
   createdAt: string;
 }

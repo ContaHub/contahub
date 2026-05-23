@@ -11,11 +11,27 @@ import { WahaService } from "../../common/services/waha.service";
  
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
-  "image/jpeg", "image/png", "image/webp",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "text/xml", "application/xml",
+  "text/xml",
+  "application/xml",
 ];
+
+const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "webp", "xls", "xlsx", "xml"];
+
+function validateFileType(file: Express.Multer.File): void {
+  if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    throw new BadRequestException(`Tipo de arquivo não permitido: ${file.mimetype}`);
+  }
+
+  const extension = file.originalname.split(".").pop()?.toLowerCase() ?? "";
+  if (!ALLOWED_EXTENSIONS.includes(extension)) {
+    throw new BadRequestException(`Extensão de arquivo não permitida: .${extension}`);
+  }
+}
  
 @Injectable()
 export class PortalService {
@@ -70,7 +86,7 @@ export class PortalService {
     return { data: documents };
   }
 
-  async getClientDocumentDownloadUrl(workspaceSlug: string, documentId: string) {
+  async getClientDocumentDownloadUrl(workspaceSlug: string, documentId: string, currentUserEmail: string) {
   this.logger.log(`[getDownloadUrl] slug=${workspaceSlug} docId=${documentId}`);
   const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
   if (!workspace) throw new NotFoundException("Escritório não encontrado");
@@ -79,6 +95,9 @@ export class PortalService {
     where: { id: documentId, workspaceId: workspace.id },
   });
   if (!doc?.storageKey) throw new NotFoundException("Documento não encontrado");
+
+  // [FIX-02] Valida que o cliente é proprietário deste documento
+  await this.validateClientAccess(workspaceSlug, doc.clientId, currentUserEmail);
 
   const url = await this.supabase.getSignedUrl(doc.storageKey);
   if (!url) throw new BadRequestException("Erro ao gerar URL de download");
@@ -127,9 +146,7 @@ export class PortalService {
  
     if (!file) throw new BadRequestException("Nenhum arquivo enviado");
  
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      throw new BadRequestException("Tipo de arquivo não permitido. Aceitos: PDF, imagens, Excel, XML");
-    }
+    validateFileType(file);
     if (file.size > 10 * 1024 * 1024) {
       throw new BadRequestException("Arquivo muito grande. Máximo: 10MB");
     }
@@ -184,7 +201,7 @@ export class PortalService {
     return { data: document, message: "Documento enviado com sucesso!" };
   }
  
-  async deleteClientDocument(workspaceSlug: string, documentId: string) {
+  async deleteClientDocument(workspaceSlug: string, documentId: string, currentUserEmail: string) {
     this.logger.log(`[deleteClientDocument] slug=${workspaceSlug} documentId=${documentId}`);
     const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
     if (!workspace) throw new NotFoundException("Escritório não encontrado");
@@ -199,6 +216,9 @@ export class PortalService {
  
     if (!doc) throw new NotFoundException("Documento não encontrado ou sem permissão para remover");
  
+    // [FIX-02] Valida que o cliente é proprietário deste documento
+    await this.validateClientAccess(workspaceSlug, doc.clientId, currentUserEmail);
+
     if (doc.storageKey) {
       await this.supabase.delete(doc.storageKey);
     }
@@ -212,9 +232,14 @@ export class PortalService {
     documentId: string,
     clientId: string,
     action: "APPROVED" | "REJECTED",
+    currentUserEmail: string,
     notes?: string
   ) {
     this.logger.log(`[reviewDocument] slug=${workspaceSlug} docId=${documentId} action=${action}`);
+    
+    // [FIX-02] Valida que o cliente tem acesso à conta solicitada
+    await this.validateClientAccess(workspaceSlug, clientId, currentUserEmail);
+
     const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
     if (!workspace) throw new NotFoundException("Escritório não encontrado");
  
@@ -256,5 +281,42 @@ export class PortalService {
       message: action === "APPROVED" ? "Relatório aprovado!" : "Revisão solicitada. O escritório será notificado.",
     };
   }
+
+  /**
+   * [FIX-02] Validação de autorização no portal do cliente.
+   *
+   * Verifica se o cliente existe, se pertence ao escritório (workspace)
+   * correspondente ao slug da URL, se o e-mail do usuário Clerk autenticado
+   * bate com o e-mail do portal configurado para o cliente, e se o portal está habilitado.
+   */
+  async validateClientAccess(
+    workspaceSlug: string,
+    clientId: string,
+    currentUserEmail: string,
+  ): Promise<void> {
+    const workspace = await prisma.workspace.findUnique({
+      where: { slug: workspaceSlug },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException("Escritório não encontrado.");
+    }
+
+    const client = await prisma.client.findFirst({
+      where: {
+        id: clientId,
+        workspaceId: workspace.id,
+        portalEmail: { equals: currentUserEmail, mode: "insensitive" },
+        portalEnabled: true,
+      },
+    });
+
+    if (!client) {
+      throw new UnauthorizedException(
+        "Você não tem permissão para acessar os dados deste cliente."
+      );
+    }
+  }
 }
+
  

@@ -6,7 +6,7 @@
     "build": "npx @nestjs/cli@10 build",
     "dev": "npx ts-node -r tsconfig-paths/register src/main.ts",
     "start": "node dist/apps/api/src/main",
-    "lint": "eslint \"{src}/**/*.ts\""
+    "lint": "eslint \"src/**/*.ts\" --fix"
   },
   "dependencies": {
     "@clerk/clerk-sdk-node": "^5.0.0",
@@ -28,6 +28,10 @@
   "devDependencies": {
     "@nestjs/cli": "^10.3.0",
     "@types/express": "^4.17.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.29.1",
     "ts-node": "^10.9.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.0"

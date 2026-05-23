@@ -1,0 +1,24 @@
+# Lista de Tarefas (Correções ContaHub)
+
+- `[x]` **Passo 1: Correção de Compilação do Frontend (FIX-01)**
+  - `[x]` Corrigir imports e declaração de workspace em `apps/web/app/portal/[slug]/page.tsx`
+  - `[x]` Validar compilação rápida do arquivo
+- `[x]` **Passo 2: Correção de Segurança (BOLA/IDOR) e Autenticação do Portal (FIX-02)**
+  - `[x]` Alterar `apps/api/src/common/middleware/workspace.middleware.ts` para validar token Clerk nas rotas privadas de portal e injetar e-mail do usuário
+  - `[x]` Adicionar `validateClientAccess` a `apps/api/src/modules/portal/portal.service.ts`
+  - `[x]` Chamar `validateClientAccess` nos endpoints sensíveis do `apps/api/src/modules/portal/portal.controller.ts`
+  - `[x]` Atualizar funções em `apps/web/lib/portal.ts` para enviar cabeçalhos Authorization com tokens JWT do Clerk
+  - `[x]` Injetar o token Clerk nos componentes de dashboard e documentos do portal
+  - `[x]` Corrigir as demais páginas do portal (`obligations`, `reports`) para injetar o Clerk token nas chamadas de dados e resolver imports/redirecionamento Clerk v5
+- `[x]` **Passo 3: MIME Type Spoofing no Backend (FIX-03)**
+  - `[x]` Implementar dupla validação `validateFileType` em `apps/api/src/modules/documents/documents.service.ts`
+  - `[x]` Implementar dupla validação `validateFileType` em `apps/api/src/modules/portal/portal.service.ts`
+- `[x]` **Passo 4: Acessibilidade WCAG 2.1 (FIX-04)**
+  - `[x]` Tornar o componente `UploadModal.tsx` acessível por teclado, leitor de tela e formulários semânticos
+- `[x]` **Passo 5: Linting e Dependências do Backend (FIX-05)**
+  - `[x]` Adicionar dependências ESLint no `apps/api/package.json`
+  - `[x]` Criar arquivo `apps/api/.eslintrc.js`
+  - `[x]` Executar instalação das dependências
+- `[x]` **Passo 6: Validação Final**
+  - `[x]` Executar compilação de produção (`pnpm --filter @contahub/web build`)
+  - `[x]` Rodar `pnpm run lint` no monorepo
