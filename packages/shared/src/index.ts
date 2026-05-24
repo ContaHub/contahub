@@ -11,3 +11,6 @@ export const OBLIGATION_LABELS: Record<string, string> = {
   DARF: "DARF", DAS: "DAS (Simples Nacional)", SPED_FISCAL: "SPED Fiscal",
   ESOCIAL: "eSocial", DIRF: "DIRF", RAIS: "RAIS", OUTRO: "Outro",
 };
+
+// Fase 3 — Jobs
+export * from './queues.config';

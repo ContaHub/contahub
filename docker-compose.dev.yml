@@ -1,0 +1,41 @@
+# =============================================================================
+# ContaHub — Docker Compose de Desenvolvimento
+# =============================================================================
+#
+# Sobe apenas o Redis localmente. O PostgreSQL e o app em si rodam direto
+# na máquina (via pnpm dev), então não precisam estar aqui.
+#
+# Por que Docker para o Redis e não instalar direto?
+# Redis no Windows é complicado (o instalador oficial está arquivado).
+# Docker resolve isso de forma idêntica no Mac do William e no Windows do Pietro.
+#
+# USO:
+#   docker compose -f docker-compose.dev.yml up -d    → sobe em background
+#   docker compose -f docker-compose.dev.yml down     → para e remove container
+#   docker compose -f docker-compose.dev.yml logs     → ver logs
+#
+# REQUISITO: Docker Desktop instalado
+#   Mac:     https://docs.docker.com/desktop/install/mac-install/
+#   Windows: https://docs.docker.com/desktop/install/windows-install/
+
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine          # Alpine = imagem mínima (~30MB vs ~130MB full)
+    container_name: contahub-redis
+    restart: unless-stopped        # Reinicia automaticamente se o Docker Desktop reiniciar
+    ports:
+      - '6379:6379'                # Porta padrão do Redis — mesma do REDIS_URL no .env
+    volumes:
+      - redis_data:/data           # Persiste dados entre restarts do container
+    command: redis-server --appendonly yes  # AOF: garante que jobs não sejam perdidos em crash
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  redis_data:
+    driver: local

@@ -1,0 +1,24 @@
+import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bull';
+import { QUEUE_NAMES } from '@contahub/shared';
+import { JobsProducerService } from './jobs-producer.service';
+import { JobsController } from './jobs.controller';
+
+/**
+ * Módulo de jobs no contexto da API.
+ * Apenas registra as filas como PRODUTORAS — não registra workers/processors.
+ * O consumo acontece no apps/jobs (processo separado).
+ */
+@Module({
+  imports: [
+    BullModule.registerQueue(
+      { name: QUEUE_NAMES.FISCAL_REMINDERS },
+      { name: QUEUE_NAMES.NOTIFICATIONS },
+      { name: QUEUE_NAMES.DOCUMENTS },
+    ),
+  ],
+  providers: [JobsProducerService],
+  controllers: [JobsController],
+  exports: [JobsProducerService],
+})
+export class JobsModule {}

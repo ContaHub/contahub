@@ -1,0 +1,207 @@
+import { Processor, Process, InjectQueue } from '@nestjs/bull';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { Job, Queue } from 'bull';
+import { PrismaClient } from '@prisma/client';
+import { addDays, format, differenceInDays, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { toZonedTime } from 'date-fns-tz';
+import { QUEUE_NAMES, JOB_NAMES, DEFAULT_JOB_OPTIONS } from '../config/queues.config';
+import { WahaClientService } from '../services/waha-client.service';
+
+// Singleton do Prisma — reutilizado entre execuções do worker
+const prisma = new PrismaClient();
+
+/** Quantos dias antes do vencimento enviar alertas */
+const ALERT_DAYS_BEFORE = [7, 3, 1] as const;
+
+/** Timezone do Brasil (São Paulo) */
+const TZ = 'America/Sao_Paulo';
+
+export interface FiscalAlertJobData {
+  obligationId: string;
+  workspaceId: string;
+  clientId: string;
+  clientName: string;
+  clientPhone: string | null;
+  obligationName: string;
+  dueDate: string;        // ISO string
+  daysUntilDue: number;
+  amount: number | null;
+}
+
+@Injectable()
+@Processor(QUEUE_NAMES.FISCAL_REMINDERS)
+export class FiscalReminderWorker {
+  private readonly logger = new Logger(FiscalReminderWorker.name);
+
+  constructor(
+    @InjectQueue(QUEUE_NAMES.FISCAL_REMINDERS)
+    private readonly fiscalQueue: Queue,
+
+    private readonly wahaService: WahaClientService,
+  ) {}
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // AGENDAMENTO: varre o banco todo dia às 08h (horário de Brasília)
+  // O cron "0 11 * * *" = 11h UTC = 08h BRT (UTC-3)
+  //
+  // Por que não usar CronExpression.EVERY_DAY_AT_8AM?
+  // Essa constante usa o timezone do servidor (UTC no Railway).
+  // Para garantir 08h no Brasil, usamos UTC+3 explícito.
+  // ──────────────────────────────────────────────────────────────────────────
+  @Cron('0 11 * * *', { name: 'daily-fiscal-scan', timeZone: TZ })
+  async scheduleDailyScan() {
+    this.logger.log('╔══ Iniciando varredura diária de obrigações fiscais ══╗');
+
+    const today = toZonedTime(new Date(), TZ);
+
+    // Busca todas as obrigações pendentes de todos os workspaces
+    // que vencem em exatamente 1, 3 ou 7 dias a partir de hoje
+    const targetDates = ALERT_DAYS_BEFORE.map((days) =>
+      format(addDays(today, days), 'yyyy-MM-dd'),
+    );
+
+    this.logger.log(`Buscando obrigações para: ${targetDates.join(', ')}`);
+
+    try {
+      const obligations = await prisma.fiscalObligation.findMany({
+        where: {
+          status: { in: ['PENDING', 'OVERDUE'] },
+          // Filtra pela data de vencimento nos próximos 1, 3 ou 7 dias
+          dueDate: {
+            in: targetDates.map((d) => new Date(d + 'T00:00:00.000Z')),
+          },
+        },
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              workspaceId: true,
+            },
+          },
+        },
+      });
+
+      this.logger.log(`${obligations.length} obrigação(ões) encontrada(s) para alertar`);
+
+      let enqueued = 0;
+      for (const obligation of obligations) {
+        // Só envia WhatsApp se o cliente tem telefone cadastrado
+        if (!obligation.client.phone) {
+          this.logger.warn(
+            `${obligation.client.name} — sem telefone cadastrado, pulando`,
+          );
+          continue;
+        }
+
+        const daysUntilDue = differenceInDays(
+          obligation.dueDate,
+          today,
+        );
+
+        const jobData: FiscalAlertJobData = {
+          obligationId: obligation.id,
+          workspaceId:  obligation.client.workspaceId,
+          clientId:     obligation.client.id,
+          clientName:   obligation.client.name,
+          clientPhone:  obligation.client.phone,
+          obligationName: obligation.name,
+          dueDate:      obligation.dueDate.toISOString(),
+          daysUntilDue,
+          amount:       obligation.amount ? Number(obligation.amount) : null,
+        };
+
+        // Enfileira o job de envio — o @Process abaixo o executará
+        await this.fiscalQueue.add(
+          JOB_NAMES.SEND_FISCAL_ALERT,
+          jobData,
+          {
+            ...DEFAULT_JOB_OPTIONS,
+            // ID único por obrigação+data evita alertas duplicados
+            // se o cron rodar duas vezes no mesmo dia (restart do servidor)
+            jobId: `fiscal-alert-${obligation.id}-${format(today, 'yyyy-MM-dd')}`,
+          },
+        );
+
+        enqueued++;
+      }
+
+      this.logger.log(`╚══ ${enqueued} alertas enfileirados com sucesso ══╝`);
+    } catch (err) {
+      this.logger.error('Erro na varredura diária:', err);
+      throw err; // Re-throw para o BullMQ registrar como falha
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // PROCESSOR: executa cada job de alerta enfileirado
+  // BullMQ chama este método para cada job com name = SEND_FISCAL_ALERT
+  // ──────────────────────────────────────────────────────────────────────────
+  @Process(JOB_NAMES.SEND_FISCAL_ALERT)
+  async processFiscalAlert(job: Job<FiscalAlertJobData>) {
+    const data = job.data;
+    this.logger.log(
+      `Processando alerta: ${data.clientName} — ${data.obligationName} (${data.daysUntilDue}d)`,
+    );
+
+    // Formata a data de vencimento em PT-BR: "sexta-feira, 30/05/2026"
+    const dueDateFormatted = format(
+      parseISO(data.dueDate),
+      "EEEE, dd/MM/yyyy",
+      { locale: ptBR },
+    );
+
+    // Formata o valor monetário se disponível
+    const amountText = data.amount
+      ? `\n💰 Valor: R$ ${data.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+      : '';
+
+    // Template da mensagem — adequado para WhatsApp (sem HTML)
+    const urgencyEmoji =
+      data.daysUntilDue === 1 ? '🚨' :
+      data.daysUntilDue === 3 ? '⚠️' : '📅';
+
+    const message = [
+      `${urgencyEmoji} *Alerta Fiscal — ContaHub*`,
+      ``,
+      `Olá! Lembramos que a obrigação abaixo vence em *${data.daysUntilDue} dia(s)*:`,
+      ``,
+      `📋 *${data.obligationName}*`,
+      `📅 Vencimento: ${dueDateFormatted}`,
+      amountText,
+      ``,
+      `Acesse o portal para mais detalhes ou entre em contato com seu contador.`,
+    ].filter((l) => l !== undefined).join('\n');
+
+    const result = await this.wahaService.sendText({
+      chatId: data.clientPhone!,
+      text: message,
+    });
+
+    if (!result.success) {
+      // Throw faz o BullMQ registrar como falha e tentar novamente (backoff)
+      throw new Error(`Falha ao enviar WhatsApp: ${result.error}`);
+    }
+
+    this.logger.log(
+      `✓ Alerta enviado para ${data.clientName} (${data.clientPhone}) — msgId: ${result.messageId}`,
+    );
+
+    // Retorno fica visível no Bull Board na aba "Completed"
+    return { sent: true, messageId: result.messageId };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // PROCESSOR: varredura manual (disparada pela API via POST /api/v1/jobs/scan)
+  // Permite forçar uma varredura sem esperar o cron diário — útil para testes
+  // ──────────────────────────────────────────────────────────────────────────
+  @Process(JOB_NAMES.DAILY_SCAN)
+  async processDailyScan(job: Job) {
+    this.logger.log(`Varredura manual iniciada (job ${job.id})`);
+    await this.scheduleDailyScan();
+    return { triggered: true };
+  }
+}

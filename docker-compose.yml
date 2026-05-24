@@ -1,0 +1,28 @@
+# ContaHub — Serviços de infraestrutura local
+# Uso: docker-compose up -d
+#
+# Inclui Redis para BullMQ (filas de jobs).
+# O PostgreSQL continua rodando localmente via Homebrew (já configurado).
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: contahub-redis
+    ports:
+      - "6379:6379"
+    # Persistência: salva snapshot a cada 60s se houve >= 1 mudança
+    # Evita perder jobs na fila após reiniciar o Docker
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  redis_data:
+    name: contahub_redis_data

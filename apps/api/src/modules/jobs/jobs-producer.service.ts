@@ -1,0 +1,84 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import {
+  QUEUE_NAMES,
+  JOB_NAMES,
+  DEFAULT_JOB_OPTIONS,
+} from '@contahub/shared';
+
+/**
+ * Serviço produtor de jobs — usado pelo apps/api para enfileirar tarefas.
+ *
+ * Por que separar produtor de consumidor?
+ * A API precisa apenas ENFILEIRAR — não processar. O processamento
+ * acontece no apps/jobs. Isso permite escalar os workers independentemente
+ * da API HTTP.
+ */
+
+// Tipos dos payloads de job — definidos inline para evitar import cross-app
+export interface FiscalAlertJobData {
+  workspaceId: string;
+  triggeredBy?: string;
+}
+
+export interface SendWhatsappJobData {
+  phone: string;
+  message: string;
+  workspaceId: string;
+}
+
+export interface ProcessUploadJobData {
+  documentId: string;
+  workspaceId: string;
+  filePath: string;
+}
+
+@Injectable()
+export class JobsProducerService {
+  private readonly logger = new Logger(JobsProducerService.name);
+
+  constructor(
+    @InjectQueue(QUEUE_NAMES.FISCAL_REMINDERS)
+    private readonly fiscalQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS)
+    private readonly notificationsQueue: Queue,
+
+    @InjectQueue(QUEUE_NAMES.DOCUMENTS)
+    private readonly documentsQueue: Queue,
+  ) {}
+
+  /** Dispara varredura manual de alertas fiscais (sem esperar o cron diário) */
+  async triggerFiscalScan(workspaceId?: string) {
+    const job = await this.fiscalQueue.add(
+      JOB_NAMES.DAILY_SCAN,
+      { workspaceId, triggeredBy: 'api', triggeredAt: new Date().toISOString() },
+      DEFAULT_JOB_OPTIONS,
+    );
+    this.logger.log(`Varredura fiscal enfileirada: job ${job.id}`);
+    return { jobId: job.id, queued: true };
+  }
+
+  /** Enfileira envio de WhatsApp de forma assíncrona */
+  async queueWhatsappNotification(data: SendWhatsappJobData) {
+    const job = await this.notificationsQueue.add(
+      JOB_NAMES.SEND_WHATSAPP,
+      data,
+      DEFAULT_JOB_OPTIONS,
+    );
+    this.logger.log(`WhatsApp enfileirado para ${data.phone}: job ${job.id}`);
+    return { jobId: job.id };
+  }
+
+  /** Enfileira processamento pós-upload de documento */
+  async queueDocumentProcessing(data: ProcessUploadJobData) {
+    const job = await this.documentsQueue.add(
+      JOB_NAMES.PROCESS_UPLOAD,
+      data,
+      DEFAULT_JOB_OPTIONS,
+    );
+    this.logger.log(`Processamento de documento enfileirado: job ${job.id}`);
+    return { jobId: job.id };
+  }
+}

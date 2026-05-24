@@ -8,13 +8,18 @@
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",
     "db:seed": "turbo db:seed",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && rm -rf node_modules",
+    "workers": "pnpm --filter @contahub/jobs dev",
+    "infra:up": "docker-compose up -d && sleep 2 && echo \"Redis pronto\""
   },
   "devDependencies": {
     "turbo": "^2.0.0",
     "prettier": "^3.2.0",
     "typescript": "^5.4.0"
   },
-  "engines": { "node": ">=20.0.0", "pnpm": ">=9.0.0" },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
   "packageManager": "pnpm@9.0.0"
 }

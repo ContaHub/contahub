@@ -1,3 +1,5 @@
+import { BullModule } from '@nestjs/bull';
+import { JobsModule } from './modules/jobs/jobs.module';
 import { Module, MiddlewareConsumer, RequestMethod } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { WorkspaceMiddleware } from "./common/middleware/workspace.middleware";
@@ -11,6 +13,12 @@ import { PortalModule } from "./modules/portal/portal.module";
 
 @Module({
   imports: [
+    // Fase 3 — BullMQ
+    BullModule.forRoot({
+      url: process.env.REDIS_URL || 'redis://localhost:6379',
+    }),
+    JobsModule,
+
     ConfigModule.forRoot({ isGlobal: true }),
     HealthModule,
     ClientsModule,
