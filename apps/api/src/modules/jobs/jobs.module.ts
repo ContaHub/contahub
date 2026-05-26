@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
-import { QUEUE_NAMES } from '@contahub/shared';
+import { QUEUES } from '@contahub/shared';
 import { JobsProducerService } from './jobs-producer.service';
 import { JobsController } from './jobs.controller';
 
@@ -12,9 +12,9 @@ import { JobsController } from './jobs.controller';
 @Module({
   imports: [
     BullModule.registerQueue(
-      { name: QUEUE_NAMES.FISCAL_REMINDERS },
-      { name: QUEUE_NAMES.NOTIFICATIONS },
-      { name: QUEUE_NAMES.DOCUMENTS },
+      { name: QUEUES.FISCAL_REMINDERS },
+      { name: QUEUES.NOTIFICATIONS },
+      { name: QUEUES.DOCUMENTS },
     ),
   ],
   providers: [JobsProducerService],

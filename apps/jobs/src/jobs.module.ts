@@ -1,54 +1,42 @@
-import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bull';
-import { ScheduleModule } from '@nestjs/schedule';
-import { QUEUE_NAMES } from './config/queues.config';
-import { FiscalReminderWorker } from './workers/fiscal-reminder.worker';
-import { NotificationWorker } from './workers/notification.worker';
-import { DocumentWorker } from './workers/document.worker';
-import { BullBoardModule } from './workers/bull-board.module';
-import { WahaClientService } from './services/waha-client.service';
+import { Module } from "@nestjs/common";
+import { BullModule } from "@nestjs/bullmq";
+import { QUEUES } from "@contahub/shared";
+import { FiscalReminderWorker } from "./workers/fiscal-reminder.worker";
+import { NotificationWorker } from "./workers/notification.worker";
+import { DocumentWorker } from "./workers/document.worker";
+import { WahaClientService } from "./services/waha-client.service";
+import { EmailService } from "./services/email.service";
+import { BullBoardModule } from "./workers/bull-board.module";
 
+const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
+const url = new URL(REDIS_URL);
 
 @Module({
   imports: [
-    /**
-     * ScheduleModule habilita os decorators @Cron, @Interval, @Timeout.
-     * É necessário para o job agendado diário de alertas fiscais.
-     */
-    ScheduleModule.forRoot(),
-
-    /**
-     * Conexão global com o Redis.
-     * REDIS_URL suporta os formatos:
-     *   redis://localhost:6379          (local sem senha)
-     *   redis://:senha@host:6379        (Railway com senha)
-     *   rediss://...                    (TLS — Railway em produção)
-     */
     BullModule.forRoot({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      connection: {
+        host: url.hostname,
+        port: Number(url.port) || 6379,
+      },
       defaultJobOptions: {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { age: 86400, count: 100 },
-        removeOnFail: { age: 604800 },
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
       },
     }),
-
-    // Registra cada fila — workers precisam da fila registrada para consumir
     BullModule.registerQueue(
-      { name: QUEUE_NAMES.FISCAL_REMINDERS },
-      { name: QUEUE_NAMES.NOTIFICATIONS },
-      { name: QUEUE_NAMES.DOCUMENTS },
+      { name: QUEUES.FISCAL_REMINDERS },
+      { name: QUEUES.NOTIFICATIONS },
+      { name: QUEUES.DOCUMENTS }
     ),
-
-    // Bull Board — painel visual de monitoramento
-
   ],
   providers: [
     FiscalReminderWorker,
     NotificationWorker,
     DocumentWorker,
     WahaClientService,
+    EmailService,       // ← NOVO Sprint 2
     BullBoardModule,
   ],
 })

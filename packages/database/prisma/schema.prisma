@@ -101,6 +101,7 @@ model Workspace {
   cnpj         String?  @unique
   clerkOrgId   String   @unique
   logoUrl      String?
+  notificationChannels  String[]  @default(["WHATSAPP"])  // ["WHATSAPP", "EMAIL"]
   primaryColor String?  @default("#2563EB")
   timezone     String   @default("America/Sao_Paulo")
   createdAt    DateTime @default(now())

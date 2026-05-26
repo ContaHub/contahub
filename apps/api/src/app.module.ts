@@ -10,6 +10,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
 import { PortalModule } from "./modules/portal/portal.module";
+import { WorkspaceModule } from './modules/workspace/workspace.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PortalModule } from "./modules/portal/portal.module";
     NotificationsModule,
     DocumentsModule,
     PortalModule,
+    WorkspaceModule,
   ],
 })
 export class AppModule {

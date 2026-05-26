@@ -14,3 +14,6 @@ export const OBLIGATION_LABELS: Record<string, string> = {
 
 // Fase 3 — Jobs
 export * from './queues.config';
+
+// Notification & Email types (Sprint 2)
+export * from './notification.types';

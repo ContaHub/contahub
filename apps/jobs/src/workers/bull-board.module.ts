@@ -5,7 +5,7 @@ import { createBullBoard } from '@bull-board/api';
 import { BullAdapter } from '@bull-board/api/bullAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import * as http from 'http';
-import * as express from 'express';
+import express from 'express';
 import { QUEUE_NAMES } from '../config/queues.config';
 
 @Module({})
