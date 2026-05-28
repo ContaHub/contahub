@@ -21,7 +21,7 @@ export async function getWorkspaceSettings(): Promise<WorkspaceSettings> {
   return data.data as WorkspaceSettings;
 }
 
-export async function updateNotificationChannels(channels: string[]): Promise<void> {
+export async function updateWorkspaceSettings(data: WorkspaceSettings): Promise<void> {
   const token = await getToken();
   const res = await fetch(`${API_URL}/api/v1/workspace/settings`, {
     method: "PATCH",
@@ -29,12 +29,12 @@ export async function updateNotificationChannels(channels: string[]): Promise<vo
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ notificationChannels: channels }),
+    body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Falha ao salvar configurações");
 }
 
-export async function sendTestEmail(to: string, template: string): Promise<{ jobId: string }> {
+export async function sendTestEmail(data: { to: string; template: string }): Promise<{ jobId: string }> {
   const token = await getToken();
   const res = await fetch(`${API_URL}/api/v1/jobs/test-email`, {
     method: "POST",
@@ -42,9 +42,9 @@ export async function sendTestEmail(to: string, template: string): Promise<{ job
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ to, template }),
+    body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Falha ao enviar e-mail de teste");
-  const data = await res.json();
-  return data.data as { jobId: string };
+  const dataJson = await res.json();
+  return dataJson.data as { jobId: string };
 }

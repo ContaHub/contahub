@@ -1,169 +1,193 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { getClients, Client, ClientsResponse } from "@/lib/clients";
-import { ClientsTable } from "@/components/clients/ClientsTable";
+import { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import {
+  Card, Badge, Button, IconButton,
+  FilterBar, SearchInput, SelectFilter,
+  EmptyState, PageHeader,
+} from "@/components/ui";
+import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { ClientModal } from "@/components/clients/ClientModal";
+import { getClients, deleteClient } from "@/lib/clients";
+
+function clientInitials(name: string) {
+  return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
+const avatarColors = [
+  "bg-blue-50 text-blue-700",
+  "bg-green-50 text-green-700",
+  "bg-amber-50 text-amber-700",
+  "bg-purple-50 text-purple-700",
+  "bg-rose-50 text-rose-700",
+];
+
+function avatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return avatarColors[Math.abs(h) % avatarColors.length];
+}
 
 export default function ClientsPage() {
-  const [data, setData] = useState<ClientsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  // Filtros
+  const openMenu = useMobileMenu();
+  const [clients, setClients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-
-  // Modal
+  const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | undefined>();
+  const [editClient, setEditClient] = useState<any>(null);
 
-  // Busca clientes da API
-  const fetchClients = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await getClients({ page, search: search || undefined, status: status || undefined });
-      setData(result);
-    } catch (err: any) {
-      setError(err.message || "Erro ao carregar clientes");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, status]);
+  const load = async () => {
+    const r = await getClients();
+    setClients(r.data || []);
+  };
 
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+  useEffect(() => { load(); }, []);
 
-  // Debounce na busca — espera 400ms antes de chamar a API
-  const [searchInput, setSearchInput] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+  const filtered = clients.filter((c) => {
+    const q = search.toLowerCase();
+    const matchSearch =
+      !q || c.name?.toLowerCase().includes(q) || c.cnpj?.includes(q);
+    const matchStatus =
+      statusFilter === "all" || c.status?.toLowerCase() === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
-  function handleEdit(client: Client) {
-    setEditingClient(client);
-    setModalOpen(true);
-  }
-
-  function handleNew() {
-    setEditingClient(undefined);
-    setModalOpen(true);
-  }
-
-  function handleModalClose() {
-    setModalOpen(false);
-    setEditingClient(undefined);
+  async function handleDelete(id: string) {
+    if (!confirm("Remover este cliente?")) return;
+    await deleteClient(id);
+    load();
   }
 
   return (
-    <div>
-      {/* Header da página */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {data ? `${data.meta.total} cliente${data.meta.total !== 1 ? "s" : ""} cadastrado${data.meta.total !== 1 ? "s" : ""}` : "Carregando..."}
-          </p>
-        </div>
-        <button
-          onClick={handleNew}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Novo cliente
-        </button>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Mobile topbar */}
+      <MobileHeader
+        onMenuClick={openMenu}
+        title="Clientes"
+        subtitle={`${clients.length} cadastrados`}
+        action={
+          <Button variant="primary" size="sm" icon={Plus} onClick={() => { setEditClient(null); setModalOpen(true); }}>
+            Novo
+          </Button>
+        }
+      />
 
-      {/* Filtros */}
-      <div className="flex gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+      {/* Desktop topbar */}
+      <PageHeader
+        title="Clientes"
+        subtitle={`${clients.length} clientes cadastrados`}
+        action={
+          <Button variant="primary" icon={Plus} onClick={() => { setEditClient(null); setModalOpen(true); }}>
+            Novo cliente
+          </Button>
+        }
+      />
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
+        <FilterBar>
+          <SearchInput
             placeholder="Buscar por nome ou CNPJ..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={search}
+            onChange={setSearch}
           />
-        </div>
+          <SelectFilter>Todos os status</SelectFilter>
+          <SelectFilter>Todos os regimes</SelectFilter>
+        </FilterBar>
 
-        <select
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600"
-        >
-          <option value="">Todos os status</option>
-          <option value="ACTIVE">Ativos</option>
-          <option value="INACTIVE">Inativos</option>
-          <option value="SUSPENDED">Suspensos</option>
-        </select>
-      </div>
-
-      {/* Conteúdo */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {error && (
-          <div className="bg-red-50 border-b border-red-100 px-6 py-4">
-            <p className="text-sm text-red-700">{error}</p>
-            <button onClick={fetchClients} className="text-sm text-red-600 underline mt-1">
-              Tentar novamente
-            </button>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <ClientsTable
-            clients={data?.data || []}
-            onEdit={handleEdit}
-          />
-        )}
-
-        {/* Paginação */}
-        {data && data.meta.totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-            <p className="text-sm text-gray-500">
-              Página {data.meta.page} de {data.meta.totalPages}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
-              >
-                Anterior
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(data.meta.totalPages, p + 1))}
-                disabled={page === data.meta.totalPages}
-                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
-              >
-                Próxima
-              </button>
+        <Card>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <div className="grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_72px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+              {["Cliente", "CNPJ", "Regime", "Status", "Contato", ""].map((h) => (
+                <span key={h} className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]">
+                  {h}
+                </span>
+              ))}
             </div>
+
+            {filtered.length === 0 && (
+              <EmptyState
+                icon={Users}
+                title="Nenhum cliente encontrado"
+                description="Adicione clientes ou ajuste os filtros."
+                action={
+                  <Button variant="primary" icon={Plus} onClick={() => { setEditClient(null); setModalOpen(true); }}>
+                    Novo cliente
+                  </Button>
+                }
+              />
+            )}
+
+            {filtered.map((c) => (
+              <div
+                key={c.id}
+                className="group grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-extrabold flex-shrink-0 ${avatarColor(c.name)}`}>
+                    {clientInitials(c.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-slate-900 truncate">{c.name}</p>
+                    <p className="text-[11px] text-slate-400">{c.type === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}</p>
+                  </div>
+                </div>
+                <span className="text-[12px] font-mono text-slate-500 truncate">{c.cnpj || c.cpf || "—"}</span>
+                <span>
+                  <span className="text-[11px] text-slate-600 bg-slate-100 border border-slate-200 rounded-md px-2 py-0.5 font-medium">
+                    {c.taxRegime || "—"}
+                  </span>
+                </span>
+                <span>
+                  <Badge variant={c.status === "ACTIVE" ? "success" : "gray"}>
+                    {c.status === "ACTIVE" ? "Ativo" : "Inativo"}
+                  </Badge>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[12px] text-slate-500 truncate">{c.email || "—"}</p>
+                  <p className="text-[11px] text-slate-400">{c.phone || c.whatsapp || ""}</p>
+                </div>
+                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
+                  <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => handleDelete(c.id)} />
+                </div>
+              </div>
+            ))}
           </div>
-        )}
+
+          {/* Mobile card list */}
+          <div className="md:hidden">
+            {filtered.length === 0 && (
+              <EmptyState icon={Users} title="Nenhum cliente" description="Adicione clientes para começar." />
+            )}
+            {filtered.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[12px] font-extrabold flex-shrink-0 ${avatarColor(c.name)}`}>
+                  {clientInitials(c.name)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-slate-900 truncate">{c.name}</p>
+                  <p className="text-[12px] text-slate-500 truncate">{c.cnpj || c.cpf} · {c.taxRegime}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={c.status === "ACTIVE" ? "success" : "gray"}>
+                    {c.status === "ACTIVE" ? "Ativo" : "Inativo"}
+                  </Badge>
+                  <IconButton icon={Pencil} label="Editar" size={13} onClick={() => { setEditClient(c); setModalOpen(true); }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      {/* Modal */}
       {modalOpen && (
         <ClientModal
-          client={editingClient}
-          onClose={handleModalClose}
-          onSuccess={fetchClients}
+          client={editClient}
+          onClose={() => setModalOpen(false)}
+          onSuccess={() => { setModalOpen(false); load(); }}
         />
       )}
     </div>

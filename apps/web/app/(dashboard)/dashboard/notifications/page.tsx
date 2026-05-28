@@ -1,178 +1,169 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  getNotificationStatus,
-  sendTestMessage,
-  sendDueAlerts,
-  NotificationStatus,
-} from "@/lib/notifications";
+import { useEffect, useState } from "react";
+import { Send, Bell, Wifi, WifiOff } from "lucide-react";
+import { Card, Button, PageHeader } from "@/components/ui";
+import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
+import { getNotificationStatus, sendTestMessage, sendDueAlerts } from "@/lib/notifications";
 
 export default function NotificationsPage() {
-  const [status, setStatus] = useState<NotificationStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(true);
-
-  // Estado do formulário de teste
-  const [testPhone, setTestPhone] = useState("");
-  const [testLoading, setTestLoading] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  // Estado do disparo de alertas
+  const openMenu = useMobileMenu();
+  const [waStatus, setWaStatus] = useState<"loading" | "connected" | "disconnected">("loading");
   const [daysAhead, setDaysAhead] = useState(3);
-  const [alertsLoading, setAlertsLoading] = useState(false);
-  const [alertsResult, setAlertsResult] = useState<{ sent: number } | null>(null);
+  const [testPhone, setTestPhone] = useState("");
+  const [sending, setSending] = useState(false);
+  const [alerting, setAlerting] = useState(false);
+  const [feedback, setFeedback] = useState("");
 
   useEffect(() => {
     getNotificationStatus()
-      .then((res) => setStatus(res.data))
-      .catch(() => setStatus({ connected: false, session: "default", message: "Erro ao conectar" }))
-      .finally(() => setStatusLoading(false));
+      .then((r) => setWaStatus(r.data?.connected ? "connected" : "disconnected"))
+      .catch(() => setWaStatus("disconnected"));
   }, []);
 
-  async function handleTest(e: React.FormEvent) {
-    e.preventDefault();
-    setTestLoading(true);
-    setTestResult(null);
+  async function handleTest() {
+    if (!testPhone) return;
+    setSending(true);
+    setFeedback("");
     try {
-      const result = await sendTestMessage(testPhone);
-      setTestResult(result);
-    } catch (err: any) {
-      setTestResult({ success: false, message: err.message });
+      await sendTestMessage(testPhone);
+      setFeedback("Mensagem de teste enviada com sucesso!");
+    } catch {
+      setFeedback("Erro ao enviar. Verifique a conexão WAHA.");
     } finally {
-      setTestLoading(false);
+      setSending(false);
     }
   }
 
-  async function handleSendAlerts() {
-    setAlertsLoading(true);
-    setAlertsResult(null);
+  async function handleAlerts() {
+    setAlerting(true);
+    setFeedback("");
     try {
-      const result = await sendDueAlerts(daysAhead);
-      setAlertsResult({ sent: result.sent });
-    } catch (err: any) {
-      setAlertsResult({ sent: 0 });
+      const r = await sendDueAlerts(daysAhead);
+      setFeedback(`Alertas disparados: ${r.sent ?? 0} enviados.`);
+    } catch {
+      setFeedback("Erro ao disparar alertas.");
     } finally {
-      setAlertsLoading(false);
+      setAlerting(false);
     }
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Gerencie alertas de prazo via WhatsApp
-        </p>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <MobileHeader
+        onMenuClick={openMenu}
+        title="Notificações"
+        subtitle="Alertas de prazo"
+      />
+      <PageHeader
+        title="Notificações"
+        subtitle="Alertas de prazo via WhatsApp e e-mail"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
 
-        {/* Card — Status da conexão */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Status do WhatsApp</h2>
+        {/* Top 2 cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
-          {statusLoading ? (
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-gray-500">Verificando conexão...</span>
+          {/* WhatsApp status */}
+          <Card className="p-5">
+            <h2 className="text-[14px] font-bold text-slate-900 mb-4">WhatsApp — WAHA</h2>
+            <div className="flex items-center gap-2.5 mb-1.5">
+              {waStatus === "loading" ? (
+                <div className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />
+              ) : waStatus === "connected" ? (
+                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_0_3px_rgba(22,163,74,0.12)]" />
+              ) : (
+                <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_0_3px_rgba(220,38,38,0.12)]" />
+              )}
+              {waStatus === "connected" ? (
+                <span className="text-[14px] font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Wifi size={15} className="text-green-600" /> Conectado
+                </span>
+              ) : (
+                <span className="text-[14px] font-semibold text-slate-800 flex items-center gap-1.5">
+                  <WifiOff size={15} className="text-red-500" /> Desconectado
+                </span>
+              )}
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${status?.connected ? "bg-green-500" : "bg-red-500"}`} />
-              <div>
-                <p className={`text-sm font-medium ${status?.connected ? "text-green-700" : "text-red-700"}`}>
-                  {status?.connected ? "Conectado" : "Desconectado"}
-                </p>
-                <p className="text-xs text-gray-400">{status?.message}</p>
+            <p className="text-[12px] text-slate-500 mb-4">Sessão WAHA {waStatus === "connected" ? "ativa" : "inativa"}</p>
+            {waStatus !== "connected" && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[12px] text-blue-700 flex gap-2">
+                <Bell size={14} className="flex-shrink-0 mt-0.5" />
+                <span>
+                  Acesse{" "}
+                  <a
+                    href="http://localhost:3000/dashboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-semibold"
+                  >
+                    localhost:3000/dashboard
+                  </a>{" "}
+                  e verifique se a sessão está ativa.
+                </span>
               </div>
+            )}
+          </Card>
+
+          {/* Disparar alertas */}
+          <Card className="p-5">
+            <h2 className="text-[14px] font-bold text-slate-900 mb-2">Disparar Alertas de Prazo</h2>
+            <p className="text-[12px] text-slate-500 mb-4">
+              Envia alertas para todos os clientes com obrigações vencendo nos próximos dias.
+            </p>
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-[13px] text-slate-600">Alertar vencendo em</span>
+              <select
+                value={daysAhead}
+                onChange={(e) => setDaysAhead(Number(e.target.value))}
+                className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] text-slate-700 focus:outline-none focus:border-blue-400"
+              >
+                {[1, 2, 3, 5, 7].map((d) => (
+                  <option key={d} value={d}>{d} dia{d > 1 ? "s" : ""}</option>
+                ))}
+              </select>
             </div>
-          )}
-
-          {!status?.connected && !statusLoading && (
-            <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-xs text-yellow-700">
-                Para conectar, acesse o dashboard do WAHA em{" "}
-                <a href="http://localhost:3000/dashboard/" target="_blank" className="underline">
-                  localhost:3000/dashboard
-                </a>{" "}
-                e verifique se a sessão está ativa.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Card — Disparar alertas */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Disparar Alertas de Prazo</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Envia WhatsApp para todos os clientes com obrigações vencendo nos próximos dias.
-          </p>
-
-          <div className="flex items-center gap-3 mb-4">
-            <label className="text-sm text-gray-700">Alertar obrigações vencendo em</label>
-            <select
-              value={daysAhead}
-              onChange={(e) => setDaysAhead(Number(e.target.value))}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <Button
+              variant="primary"
+              icon={Send}
+              onClick={handleAlerts}
+              disabled={alerting}
+              className="w-full justify-center"
             >
-              <option value={1}>1 dia</option>
-              <option value={2}>2 dias</option>
-              <option value={3}>3 dias</option>
-              <option value={5}>5 dias</option>
-              <option value={7}>7 dias</option>
-            </select>
-          </div>
-
-          <button
-            onClick={handleSendAlerts}
-            disabled={alertsLoading || !status?.connected}
-            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            {alertsLoading ? "Enviando..." : "📲 Enviar alertas agora"}
-          </button>
-
-          {alertsResult && (
-            <div className={`mt-3 text-sm px-3 py-2 rounded-lg ${alertsResult.sent > 0 ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-600"}`}>
-              {alertsResult.sent > 0
-                ? `✅ ${alertsResult.sent} mensagem${alertsResult.sent !== 1 ? "ns" : ""} enviada${alertsResult.sent !== 1 ? "s" : ""} com sucesso!`
-                : "Nenhuma obrigação vencendo nesse período ou nenhum cliente com WhatsApp cadastrado."}
-            </div>
-          )}
+              {alerting ? "Enviando..." : "Enviar alertas agora"}
+            </Button>
+          </Card>
         </div>
 
-        {/* Card — Mensagem de teste */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 lg:col-span-2">
-          <h2 className="font-semibold text-gray-900 mb-4">Enviar Mensagem de Teste</h2>
-          <p className="text-sm text-gray-500 mb-4">
+        {/* Test message */}
+        <Card className="p-5">
+          <h2 className="text-[14px] font-bold text-slate-900 mb-2">Mensagem de Teste</h2>
+          <p className="text-[12px] text-slate-500 mb-4">
             Verifica se a integração está funcionando enviando uma mensagem para qualquer número.
           </p>
-
-          <form onSubmit={handleTest} className="flex gap-3">
+          <div className="flex gap-2 flex-col sm:flex-row">
             <input
-              type="text"
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
+              placeholder="Ex: 11999990000"
               value={testPhone}
               onChange={(e) => setTestPhone(e.target.value)}
-              placeholder="Ex: 11999990000"
-              required
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <button
-              type="submit"
-              disabled={testLoading || !status?.connected}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+            <Button
+              variant="primary"
+              icon={Send}
+              onClick={handleTest}
+              disabled={sending || !testPhone}
             >
-              {testLoading ? "Enviando..." : "Enviar teste"}
-            </button>
-          </form>
-
-          {testResult && (
-            <div className={`mt-3 text-sm px-3 py-2 rounded-lg ${testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-              {testResult.success ? "✅" : "❌"} {testResult.message}
-            </div>
+              {sending ? "Enviando..." : "Enviar teste"}
+            </Button>
+          </div>
+          {feedback && (
+            <p className="mt-3 text-[12px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+              {feedback}
+            </p>
           )}
-        </div>
-
+        </Card>
       </div>
     </div>
   );

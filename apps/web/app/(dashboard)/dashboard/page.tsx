@@ -1,161 +1,185 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getDashboardStats, DashboardStats, formatDate, getDaysUntil, getDueBadgeClass } from "@/lib/dashboard";
-import { OBLIGATION_LABELS } from "@/lib/fiscal";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Users,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  BarChart2,
+  Receipt,
+} from "lucide-react";
+import { MetricCard, Card, SectionHeader, Badge } from "@/components/ui";
+import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
+import { PageHeader } from "@/components/ui";
+import { getDashboardStats } from "@/lib/dashboard";
+import { getObligations } from "@/lib/fiscal";
 
-export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    getDashboardStats()
-      .then((res) => setStats(res.data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  return (
-    <div>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Visão geral do escritório
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      {/* Cards de métricas */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <StatCard
-          title="Clientes Ativos"
-          value={loading ? null : stats?.activeClients ?? 0}
-          icon="👥"
-          href="/dashboard/clients"
-          color="blue"
-        />
-        <StatCard
-          title="Obrigações Pendentes"
-          value={loading ? null : stats?.pendingObligations ?? 0}
-          icon="📋"
-          href="/dashboard/fiscal"
-          color="purple"
-        />
-        <StatCard
-          title="Vencendo Hoje"
-          value={loading ? null : stats?.dueTodayObligations ?? 0}
-          icon="⚠️"
-          href="/dashboard/fiscal"
-          color="red"
-          highlight
-        />
-        <StatCard
-          title="Concluídas no Mês"
-          value={loading ? null : stats?.completedThisMonth ?? 0}
-          icon="✅"
-          href="/dashboard/fiscal"
-          color="green"
-        />
-      </div>
-
-      {/* Widget — Próximas obrigações */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Próximas obrigações</h2>
-          <Link
-            href="/dashboard/fiscal"
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Ver todas →
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : !stats?.upcomingObligations?.length ? (
-          <div className="text-center py-12">
-            <p className="text-2xl mb-2">🎉</p>
-            <p className="text-gray-500 text-sm">Nenhuma obrigação pendente</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {stats.upcomingObligations.map((ob) => (
-              <div key={ob.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 text-xs font-bold">
-                    {ob.type.slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {OBLIGATION_LABELS[ob.type] || ob.type}
-                    </p>
-                    <p className="text-xs text-gray-400">{ob.client.name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400">{formatDate(ob.dueDate)}</span>
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${getDueBadgeClass(ob.dueDate)}`}>
-                    {getDaysUntil(ob.dueDate)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+// Formatador de data pt-BR
+function fmtDate(date: string) {
+  return new Date(date).toLocaleDateString("pt-BR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-// Componente de card de métrica
-function StatCard({
-  title,
-  value,
-  icon,
-  href,
-  color,
-  highlight = false,
-}: {
-  title: string;
-  value: number | null;
-  icon: string;
-  href: string;
-  color: "blue" | "purple" | "red" | "green";
-  highlight?: boolean;
-}) {
-  const colorMap = {
-    blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100" },
-    purple: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-100" },
-    red: { bg: "bg-red-50", text: "text-red-600", border: "border-red-100" },
-    green: { bg: "bg-green-50", text: "text-green-600", border: "border-green-100" },
-  };
-  const c = colorMap[color];
+function getDaysUntil(date: string) {
+  const d = Math.round(
+    (new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+  return d;
+}
+
+function daysBadge(days: number) {
+  if (days < 0) return <Badge variant="danger">Vencido</Badge>;
+  if (days === 0) return <Badge variant="danger">Hoje</Badge>;
+  if (days <= 3) return <Badge variant="warning">{days} dias</Badge>;
+  return <Badge variant="success">{days} dias</Badge>;
+}
+
+const oblIcons: Record<string, React.ElementType> = {
+  DAS: BarChart2,
+  DARF: Receipt,
+};
+
+export default function DashboardPage() {
+  const openMenu = useMobileMenu();
+  const router = useRouter();
+  const [stats, setStats] = useState<any>(null);
+  const [obligations, setObligations] = useState<any[]>([]);
+
+  useEffect(() => {
+    getDashboardStats().then((r) => setStats(r.data)).catch(() => {});
+    getObligations({ status: "PENDING" }).then((r) =>
+      setObligations((r.data || []).slice(0, 5))
+    ).catch(() => {});
+  }, []);
+
+  const today = new Date().toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
-    <Link href={href}>
-      <div className={`rounded-xl border ${highlight ? `${c.border} ${c.bg}` : "border-gray-200 bg-white"} p-6 hover:shadow-md transition-shadow cursor-pointer`}>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <span className="text-lg">{icon}</span>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Mobile topbar */}
+      <MobileHeader onMenuClick={openMenu} title="Dashboard" subtitle={today} />
+
+      {/* Desktop topbar */}
+      <PageHeader title="Dashboard" subtitle={today} />
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
+
+        {/* Metric grid — 2 cols on mobile, 4 on desktop */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+          <MetricCard
+            label="Clientes Ativos"
+            value={stats?.activeClients ?? "—"}
+            icon={Users}
+            variant="blue"
+            onClick={() => router.push("/dashboard/clients")}
+          />
+          <MetricCard
+            label="Obrigações Pendentes"
+            value={stats?.pendingObligations ?? "—"}
+            icon={Clock}
+            variant="amber"
+            onClick={() => router.push("/dashboard/fiscal")}
+          />
+          <MetricCard
+            label="Vencendo Hoje"
+            value={stats?.dueTodayObligations ?? "—"}
+            icon={AlertTriangle}
+            variant="red"
+            valueClass={
+              stats?.dueTodayObligations > 0 ? "text-red-600" : ""
+            }
+            onClick={() => router.push("/dashboard/fiscal")}
+          />
+          <MetricCard
+            label="Concluídas no Mês"
+            value={stats?.completedThisMonth ?? "—"}
+            icon={CheckCircle}
+            variant="green"
+          />
         </div>
-        {value === null ? (
-          <div className="h-9 w-16 bg-gray-100 rounded animate-pulse" />
-        ) : (
-          <p className={`text-3xl font-bold ${highlight ? c.text : "text-gray-900"}`}>
-            {value}
-          </p>
-        )}
+
+        {/* Upcoming obligations */}
+        <SectionHeader
+          title="Próximas obrigações"
+          linkLabel="Ver todas"
+          onLinkClick={() => router.push("/dashboard/fiscal")}
+        />
+
+        <Card>
+          {obligations.length === 0 && (
+            <div className="py-10 text-center text-[13px] text-slate-400">
+              Nenhuma obrigação pendente
+            </div>
+          )}
+          {obligations.map((obl, i) => {
+            const days = getDaysUntil(obl.dueDate);
+            const Icon = oblIcons[obl.type] ?? Receipt;
+            const isDas = obl.type === "DAS";
+            return (
+              <div
+                key={obl.id}
+                className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer transition-colors"
+                onClick={() => router.push("/dashboard/fiscal")}
+              >
+                {/* Icon & Type */}
+                <div className="flex items-center gap-3 min-w-0 sm:w-[150px] flex-shrink-0">
+                  <div
+                    className={`w-9 h-9 rounded-[9px] flex items-center justify-center flex-shrink-0 ${
+                      isDas ? "bg-blue-50" : "bg-amber-50"
+                    }`}
+                  >
+                    <Icon size={17} className={isDas ? "text-blue-600" : "text-amber-600"} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-bold text-slate-900 truncate">
+                      {obl.type}
+                    </p>
+                    <p className="text-[11px] text-slate-400 sm:hidden truncate">
+                      {obl.client?.name} · {obl.competenceMonth.toString().padStart(2, "0")}/{obl.competenceYear}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Client Name (Desktop) */}
+                <div className="hidden sm:block flex-1 min-w-0">
+                  <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold mb-0.5">Cliente</span>
+                  <p className="text-[13px] font-semibold text-slate-700 truncate">
+                    {obl.client?.name || "—"}
+                  </p>
+                </div>
+
+                {/* Competence (Desktop) */}
+                <div className="hidden md:block w-32 flex-shrink-0">
+                  <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold mb-0.5">Competência</span>
+                  <p className="text-[13px] font-semibold text-slate-600">
+                    {obl.competenceMonth.toString().padStart(2, "0")}/{obl.competenceYear}
+                  </p>
+                </div>
+
+                {/* Due Date & Badge */}
+                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-1 flex-shrink-0 sm:w-[160px]">
+                  <div className="text-[12px] text-slate-500 sm:text-slate-400">
+                    <span className="sm:hidden text-slate-400 text-[11px] block mb-0.5">Vencimento</span>
+                    <span className="font-semibold sm:font-normal text-slate-600 sm:text-slate-500">{fmtDate(obl.dueDate)}</span>
+                  </div>
+                  <div>{daysBadge(days)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
       </div>
-    </Link>
+    </div>
   );
 }

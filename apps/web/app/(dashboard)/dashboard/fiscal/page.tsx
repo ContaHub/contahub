@@ -1,228 +1,161 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { Plus, BarChart2, Receipt, Check, Trash2, FileText } from "lucide-react";
 import {
-  getObligations, completeObligation,
-  FiscalObligation, OBLIGATION_LABELS, STATUS_CONFIG,
-  MONTHS, formatCurrency, formatDateBR,
-} from "@/lib/fiscal";
+  Card, Badge, Button, IconButton,
+  FilterBar, SelectFilter, EmptyState, PageHeader,
+} from "@/components/ui";
+import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { ObligationModal } from "@/components/fiscal/ObligationModal";
+import { getObligations, completeObligation } from "@/lib/fiscal";
 
-// Retorna ícone por tipo de obrigação
-function getTypeIcon(type: string): string {
-  const icons: Record<string, string> = {
-    DARF: "💰", DAS: "📊", DEFIS: "📄", SPED_CONTABIL: "📚",
-    SPED_FISCAL: "📋", ESOCIAL: "👥", DIRF: "📑", RAIS: "📃",
-    REINF: "🔄", DCTF: "📝",
-  };
-  return icons[type] || "📌";
+const MONTHS = [
+  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+];
+
+function fmtCurrency(v: number) {
+  return v?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) ?? "—";
+}
+
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("pt-BR");
+}
+
+function obligationIcon(type: string) {
+  if (type === "DAS") return { icon: BarChart2, bg: "bg-blue-50", color: "text-blue-600" };
+  return { icon: Receipt, bg: "bg-amber-50", color: "text-amber-600" };
+}
+
+function statusBadge(s: string) {
+  if (s === "PENDING") return <Badge variant="warning">Pendente</Badge>;
+  if (s === "COMPLETED") return <Badge variant="success">Concluído</Badge>;
+  if (s === "OVERDUE") return <Badge variant="danger">Vencido</Badge>;
+  return <Badge variant="gray">{s}</Badge>;
 }
 
 export default function FiscalPage() {
-  const [obligations, setObligations] = useState<FiscalObligation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [completing, setCompleting] = useState<string | null>(null);
-
-  // Filtros
+  const openMenu = useMobileMenu();
   const now = new Date();
-  const [statusFilter, setStatusFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState(now.getMonth() + 1);
-  const [yearFilter, setYearFilter] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
+  const [status, setStatus] = useState("all");
+  const [obligations, setObligations] = useState<any[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const fetchObligations = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await getObligations({
-        status: statusFilter || undefined,
-        month: monthFilter,
-        year: yearFilter,
-      });
-      setObligations(res.data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, monthFilter, yearFilter]);
+  const load = () =>
+    getObligations({ month, year, status: status === "all" ? undefined : status })
+      .then((r) => setObligations(r.data || []))
+      .catch(() => {});
 
-  useEffect(() => { fetchObligations(); }, [fetchObligations]);
+  useEffect(() => { load(); }, [month, year, status]);
 
   async function handleComplete(id: string) {
-    setCompleting(id);
-    try {
-      await completeObligation(id);
-      fetchObligations();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setCompleting(null);
-    }
+    await completeObligation(id);
+    load();
   }
 
-  const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
-
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fiscal</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {loading ? "Carregando..." : `${obligations.length} ${obligations.length !== 1 ? "obrigações encontradas" : "obrigação encontrada"}`}
-          </p>
-        </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nova obrigação
-        </button>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <MobileHeader
+        onMenuClick={openMenu}
+        title="Fiscal"
+        subtitle={`${obligations.length} obrigações`}
+        action={
+          <Button variant="primary" size="sm" icon={Plus} onClick={() => setModalOpen(true)}>
+            Nova
+          </Button>
+        }
+      />
+      <PageHeader
+        title="Fiscal"
+        subtitle={`${obligations.length} obrigações encontradas`}
+        action={
+          <Button variant="primary" icon={Plus} onClick={() => setModalOpen(true)}>
+            Nova obrigação
+          </Button>
+        }
+      />
 
-      {/* Filtros */}
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <select
-          value={monthFilter}
-          onChange={(e) => setMonthFilter(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
-        >
-          {MONTHS.map((m, i) => (
-            <option key={i + 1} value={i + 1}>{m}</option>
-          ))}
-        </select>
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
+        <FilterBar>
+          <SelectFilter>{MONTHS[month - 1]} {year}</SelectFilter>
+          <SelectFilter>Todos os status</SelectFilter>
+          <SelectFilter>Todos os clientes</SelectFilter>
+        </FilterBar>
 
-        <select
-          value={yearFilter}
-          onChange={(e) => setYearFilter(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
-        >
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
+        <Card>
+          {/* Desktop */}
+          <div className="hidden md:block">
+            <div className="grid grid-cols-[1.8fr_1.6fr_0.9fr_1fr_1fr_0.9fr_72px] gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+              {["Obrigação","Cliente","Competência","Vencimento","Valor","Status",""].map((h) => (
+                <span key={h} className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]">{h}</span>
+              ))}
+            </div>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
-        >
-          <option value="">Todos os status</option>
-          {Object.entries(STATUS_CONFIG).map(([value, { label }]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-      </div>
+            {obligations.length === 0 && (
+              <EmptyState icon={FileText} title="Nenhuma obrigação" description="Crie obrigações fiscais para seus clientes." />
+            )}
 
-      {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>
-      )}
-
-      {/* Tabela */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            {obligations.map((o) => {
+              const { icon: Icon, bg, color } = obligationIcon(o.type);
+              return (
+                <div
+                  key={o.id}
+                  className="group grid grid-cols-[1.8fr_1.6fr_0.9fr_1fr_1fr_0.9fr_72px] gap-2 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-7 h-7 rounded-[7px] flex items-center justify-center flex-shrink-0 ${bg}`}>
+                      <Icon size={14} className={color} />
+                    </div>
+                    <span className="text-[13px] font-semibold text-slate-900 truncate">{o.type}</span>
+                  </div>
+                  <span className="text-[13px] text-slate-700 truncate">{o.client?.name || "—"}</span>
+                  <span className="text-[13px] text-slate-500">{MONTHS[(o.competenceMonth || 1) - 1].slice(0,3)} {o.competenceYear}</span>
+                  <span className="text-[13px] text-slate-500">{fmtDate(o.dueDate)}</span>
+                  <span className="text-[13px] font-bold text-slate-900">{fmtCurrency(o.amount)}</span>
+                  <span>{statusBadge(o.status)}</span>
+                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {o.status === "PENDING" && (
+                      <IconButton icon={Check} variant="success" label="Concluir" onClick={() => handleComplete(o.id)} />
+                    )}
+                    <IconButton icon={Trash2} variant="danger" label="Remover" />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ) : obligations.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-3xl mb-3">📋</p>
-            <p className="text-gray-500 font-medium">Nenhuma obrigação encontrada</p>
-            <p className="text-gray-400 text-sm mt-1">
-              {MONTHS[monthFilter - 1]} de {yearFilter}
-            </p>
+
+          {/* Mobile card list */}
+          <div className="md:hidden">
+            {obligations.length === 0 && (
+              <EmptyState icon={FileText} title="Nenhuma obrigação" />
+            )}
+            {obligations.map((o) => {
+              const { icon: Icon, bg, color } = obligationIcon(o.type);
+              return (
+                <div key={o.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0">
+                  <div className={`w-9 h-9 rounded-[9px] flex items-center justify-center flex-shrink-0 ${bg}`}>
+                    <Icon size={16} className={color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-slate-900">{o.type}</p>
+                    <p className="text-[12px] text-slate-500 truncate">{o.client?.name} · {fmtDate(o.dueDate)}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[12px] font-bold text-slate-800">{fmtCurrency(o.amount)}</span>
+                    {statusBadge(o.status)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-3 pt-4 pl-6">Obrigação</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-3 pt-4">Cliente</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-3 pt-4">Competência</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-3 pt-4">Vencimento</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-3 pt-4">Valor</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pb-3 pt-4">Status</th>
-                  <th className="pb-3 pt-4 pr-6"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {obligations.map((ob) => {
-                  const status = STATUS_CONFIG[ob.status];
-                  const isPending = ob.status === "PENDING" || ob.status === "IN_PROGRESS";
-                  return (
-                    <tr key={ob.id} className="hover:bg-gray-50 transition-colors group">
-                      {/* Tipo */}
-                      <td className="py-4 pl-6">
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{getTypeIcon(ob.type)}</span>
-                          <span className="text-sm font-medium text-gray-900">
-                            {OBLIGATION_LABELS[ob.type] || ob.type}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Cliente */}
-                      <td className="py-4">
-                        <p className="text-sm text-gray-700">{ob.client.name}</p>
-                        <p className="text-xs text-gray-400 font-mono">{ob.client.cnpj}</p>
-                      </td>
-
-                      {/* Competência */}
-                      <td className="py-4">
-                        <span className="text-sm text-gray-600">
-                          {MONTHS[ob.competenceMonth - 1]?.slice(0, 3)} {ob.competenceYear}
-                        </span>
-                      </td>
-
-                      {/* Vencimento */}
-                      <td className="py-4">
-                        <span className="text-sm text-gray-600">{formatDateBR(ob.dueDate)}</span>
-                      </td>
-
-                      {/* Valor */}
-                      <td className="py-4">
-                        <span className="text-sm text-gray-600">
-                          {ob.amount ? formatCurrency(ob.amount) : "—"}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status?.class}`}>
-                          {status?.label}
-                        </span>
-                      </td>
-
-                      {/* Ação */}
-                      <td className="py-4 pr-6">
-                        {isPending && (
-                          <button
-                            onClick={() => handleComplete(ob.id)}
-                            disabled={completing === ob.id}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium text-green-600 hover:text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-50 disabled:opacity-50"
-                          >
-                            {completing === ob.id ? "..." : "✓ Concluir"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        </Card>
       </div>
 
       {modalOpen && (
-        <ObligationModal
-          onClose={() => setModalOpen(false)}
-          onSuccess={fetchObligations}
-        />
+        <ObligationModal onClose={() => setModalOpen(false)} onSuccess={() => { setModalOpen(false); load(); }} />
       )}
     </div>
   );

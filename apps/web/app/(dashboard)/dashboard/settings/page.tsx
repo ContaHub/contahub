@@ -1,208 +1,183 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  getWorkspaceSettings,
-  updateNotificationChannels,
-  sendTestEmail,
-} from "@/lib/settings";
+import { useEffect, useState } from "react";
+import { Mail, MessageCircle, Save } from "lucide-react";
+import { Card, Button, Toggle, PageHeader } from "@/components/ui";
+import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
+import { getWorkspaceSettings, updateWorkspaceSettings, sendTestEmail } from "@/lib/settings";
+
+const TEMPLATES = [
+  { value: "deadline-alert",        label: "Alerta de Prazo Fiscal" },
+  { value: "obligation-completed",  label: "Obrigação Concluída" },
+  { value: "portal-welcome",        label: "Boas-vindas ao Portal" },
+];
 
 export default function SettingsPage() {
-  const [channels, setChannels] = useState<string[]>(["WHATSAPP"]);
-  const [loading, setLoading] = useState(true);
+  const openMenu = useMobileMenu();
+  const [whatsapp, setWhatsapp] = useState(true);
+  const [email, setEmail] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testTo, setTestTo] = useState("");
+  const [savedMsg, setSavedMsg] = useState("");
+
+  const [testEmail, setTestEmail] = useState("");
   const [testTemplate, setTestTemplate] = useState("deadline-alert");
   const [testSending, setTestSending] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [testFeedback, setTestFeedback] = useState("");
 
   useEffect(() => {
     getWorkspaceSettings()
-      .then((s) => setChannels(s.notificationChannels))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .then((r) => {
+        const channels: string[] = r.notificationChannels || ["WHATSAPP"];
+        setWhatsapp(channels.includes("WHATSAPP"));
+        setEmail(channels.includes("EMAIL"));
+      })
+      .catch(() => {});
   }, []);
 
-  function toggleChannel(channel: string) {
-    setChannels((prev) =>
-      prev.includes(channel) ? prev.filter((c) => c !== channel) : [...prev, channel]
-    );
-  }
-
-  function showFeedback(type: "success" | "error", msg: string) {
-    setFeedback({ type, msg });
-    setTimeout(() => setFeedback(null), 4000);
-  }
-
   async function handleSave() {
-    if (channels.length === 0) {
-      showFeedback("error", "Selecione pelo menos um canal de notificação.");
-      return;
-    }
     setSaving(true);
+    setSavedMsg("");
+    const channels: string[] = [];
+    if (whatsapp) channels.push("WHATSAPP");
+    if (email) channels.push("EMAIL");
     try {
-      await updateNotificationChannels(channels);
-      showFeedback("success", "Configurações salvas com sucesso!");
+      await updateWorkspaceSettings({ notificationChannels: channels });
+      setSavedMsg("Configurações salvas com sucesso!");
     } catch {
-      showFeedback("error", "Erro ao salvar. Tente novamente.");
+      setSavedMsg("Erro ao salvar configurações.");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleTestEmail() {
-    if (!testTo) {
-      showFeedback("error", "Informe um e-mail de destino.");
-      return;
-    }
+    if (!testEmail) return;
     setTestSending(true);
+    setTestFeedback("");
     try {
-      const { jobId } = await sendTestEmail(testTo, testTemplate);
-      showFeedback("success", `E-mail "${testTemplate === "deadline-alert" ? "Alerta de Prazo Fiscal" : testTemplate === "obligation-completed" ? "Obrigação Concluída" : "Boas-vindas ao Portal"}" enviado com sucesso. Verifique a caixa de entrada.`);
+      await sendTestEmail({ to: testEmail, template: testTemplate });
+      setTestFeedback("E-mail enviado com sucesso!");
     } catch {
-      showFeedback("error", "Erro ao enviar. Verifique se RESEND_API_KEY está configurada.");
+      setTestFeedback("Erro ao enviar. Verifique o RESEND_API_KEY.");
     } finally {
       setTestSending(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-2xl space-y-8 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Gerencie os canais de notificação do escritório.
-        </p>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <MobileHeader
+        onMenuClick={openMenu}
+        title="Configurações"
+        subtitle="Canais de notificação"
+      />
+      <PageHeader
+        title="Configurações"
+        subtitle="Canais de notificação do escritório"
+      />
 
-      {feedback && (
-        <div
-          className={`rounded-lg px-4 py-3 text-sm font-medium ${
-            feedback.type === "success"
-              ? "bg-green-50 text-green-800"
-              : "bg-red-50 text-red-800"
-          }`}
-        >
-          {feedback.msg}
-        </div>
-      )}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
 
-      {/* Canais */}
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-800">Canais de Notificação</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Defina como seus clientes serão notificados sobre prazos e obrigações.
-        </p>
+          {/* Notification channels */}
+          <Card className="p-5">
+            <h2 className="text-[14px] font-bold text-slate-900 mb-1">Canais de Notificação</h2>
+            <p className="text-[12px] text-slate-500 mb-5">
+              Defina como seus clientes serão notificados sobre prazos e obrigações.
+            </p>
 
-        <div className="mt-5 space-y-3">
-          {[
-            {
-              key: "WHATSAPP",
-              label: "WhatsApp",
-              icon: "💬",
-              hint: "Via WAHA self-hosted — requer número ativo",
-              activeColor: "bg-blue-500",
-            },
-            {
-              key: "EMAIL",
-              label: "E-mail",
-              icon: "📧",
-              hint: "Via Resend — requer RESEND_API_KEY no .env.local",
-              activeColor: "bg-blue-500",
-            },
-          ].map(({ key, label, icon, hint, activeColor }) => (
-            <div
-              key={key}
-              className="flex items-center justify-between rounded-lg border border-gray-200 p-4 hover:bg-gray-50"
-            >
+            <div className="flex items-center justify-between py-3.5 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <span className="text-2xl" aria-hidden="true">{icon}</span>
+                <div className="w-9 h-9 rounded-[9px] bg-green-50 flex items-center justify-center flex-shrink-0">
+                  <MessageCircle size={18} className="text-green-700" />
+                </div>
                 <div>
-                  <p className="font-medium text-gray-800">{label}</p>
-                  <p className="text-xs text-gray-500">{hint}</p>
+                  <p className="text-[13px] font-semibold text-slate-900">WhatsApp</p>
+                  <p className="text-[12px] text-slate-500">Via WAHA self-hosted</p>
                 </div>
               </div>
-              <button
-                onClick={() => toggleChannel(key)}
-                role="switch"
-                aria-checked={channels.includes(key)}
-                aria-label={`${channels.includes(key) ? "Desativar" : "Ativar"} ${label}`}
-                className={`px-3 py-1 rounded-md text-xs font-semibold border transition-colors ${
-                  channels.includes(key)
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-500 border-gray-300"
-                }`}
-                >
-                {channels.includes(key) ? "ON" : "OFF"}
-              </button>
+              <Toggle enabled={whatsapp} onChange={setWhatsapp} />
             </div>
-          ))}
-        </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="mt-5 w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-        >
-          {saving ? "Salvando..." : "Salvar Configurações"}
-        </button>
-      </section>
+            <div className="flex items-center justify-between py-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-[9px] bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <Mail size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate-900">E-mail</p>
+                  <p className="text-[12px] text-slate-500">Via Resend — requer RESEND_API_KEY</p>
+                </div>
+              </div>
+              <Toggle enabled={email} onChange={setEmail} />
+            </div>
 
-      {/* Teste de e-mail */}
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-800">Teste de E-mail</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Envie um e-mail de exemplo para validar a integração com o Resend.
-        </p>
+            <div className="mt-5">
+              <Button
+                variant="primary"
+                icon={Save}
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full justify-center"
+              >
+                {saving ? "Salvando..." : "Salvar Configurações"}
+              </Button>
+              {savedMsg && (
+                <p className="mt-2 text-[12px] text-slate-600 text-center">{savedMsg}</p>
+              )}
+            </div>
+          </Card>
 
-        <div className="mt-4 space-y-3">
-          <div>
-            <label htmlFor="test-email-to" className="block text-sm font-medium text-gray-700">
-              Destinatário
-            </label>
-            <input
-              id="test-email-to"
-              type="email"
-              value={testTo}
-              onChange={(e) => setTestTo(e.target.value)}
-              placeholder="seu@email.com"
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+          {/* Email test */}
+          <Card className="p-5">
+            <h2 className="text-[14px] font-bold text-slate-900 mb-1">Teste de E-mail</h2>
+            <p className="text-[12px] text-slate-500 mb-5">
+              Envie um e-mail de exemplo para validar a integração com o Resend.
+            </p>
 
-          <div>
-            <label htmlFor="test-template" className="block text-sm font-medium text-gray-700">
-              Template
-            </label>
-            <select
-              id="test-template"
-              value={testTemplate}
-              onChange={(e) => setTestTemplate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            <div className="mb-3">
+              <label className="block text-[12px] font-semibold text-slate-500 mb-1.5">
+                Destinatário
+              </label>
+              <input
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
+                placeholder="seu@email.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-[12px] font-semibold text-slate-500 mb-1.5">
+                Template
+              </label>
+              <select
+                value={testTemplate}
+                onChange={(e) => setTestTemplate(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] text-slate-700 focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
+              >
+                {TEMPLATES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <Button
+              variant="primary"
+              icon={Mail}
+              onClick={handleTestEmail}
+              disabled={testSending || !testEmail}
+              className="w-full justify-content"
             >
-              <option value="deadline-alert">Alerta de Prazo Fiscal</option>
-              <option value="obligation-completed">Obrigação Concluída</option>
-              <option value="portal-welcome">Boas-vindas ao Portal</option>
-            </select>
-          </div>
+              {testSending ? "Enviando..." : "Enviar E-mail de Teste"}
+            </Button>
+            {testFeedback && (
+              <p className="mt-2 text-[12px] text-slate-600 text-center">{testFeedback}</p>
+            )}
+          </Card>
 
-          <button
-            onClick={handleTestEmail}
-            disabled={testSending}
-            className="w-full rounded-lg border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
-          >
-            {testSending ? "Enfileirando..." : "Enviar E-mail de Teste"}
-          </button>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
