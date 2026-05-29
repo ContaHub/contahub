@@ -327,3 +327,84 @@ export function Toggle({
     </button>
   );
 }
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+
+export function Modal({
+  title,
+  subtitle,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <h2 className="text-[15px] font-bold text-slate-900">{title}</h2>
+            {subtitle && <p className="text-[12px] text-slate-500 mt-0.5">{subtitle}</p>}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div className="px-6 py-5">{children}</div>
+        {footer && (
+          <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ConfirmModal ─────────────────────────────────────────────────────────────
+
+export function ConfirmModal({
+  title,
+  message,
+  confirmLabel = "Confirmar",
+  confirmVariant = "danger",
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  confirmVariant?: ButtonVariant;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal
+      title={title}
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
+          <Button variant={confirmVariant} onClick={onConfirm}>{confirmLabel}</Button>
+        </>
+      }
+    >
+      <p className="text-[14px] text-slate-600">{message}</p>
+    </Modal>
+  );
+}

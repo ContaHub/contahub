@@ -107,12 +107,12 @@ export class JobsProducerService {
 
   // ── Varredura fiscal manual ────────────────────────────────────────────────
 
-  async triggerFiscalScan(): Promise<string> {
-    const job = await this.fiscalQueue.add(
-      JOB_NAMES.SCAN_FISCAL_OBLIGATIONS,
-      { triggeredAt: new Date().toISOString() },
-      { jobId: `manual-scan-${Date.now()}` }
-    );
-    return job.id as string;
-  }
+    async triggerFiscalScan(): Promise<string> {
+      const job = await this.fiscalQueue.add(
+        JOB_NAMES.DAILY_SCAN,
+        { triggeredAt: new Date().toISOString() },
+        { jobId: `manual-scan-${Date.now()}` }
+      );
+      return job.id as string;
+    }
 }

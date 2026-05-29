@@ -14,8 +14,10 @@ export interface Client {
   portalEnabled?: boolean;
   portalEmail?: string;
   notes?: string;
-  tags: string[];
-  createdAt: string;
+  tags:            string[];
+  cnpjStatus?:     string | null;
+  cnpjLastChecked?: string | null;
+  createdAt:       string;
 }
 
 export interface ClientsResponse {

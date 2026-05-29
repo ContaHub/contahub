@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RetornoEnvioLoteRPS xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.prefeitura.sp.gov.br/nfe">
+  <Cabecalho Versao="1" xmlns="">
+    <Sucesso>true</Sucesso>
+    <InformacoesLote>
+      <NumeroLote>380</NumeroLote>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <CPFCNPJRemetente>
+        <CNPJ>04642554000143</CNPJ>
+      </CPFCNPJRemetente>
+      <DataEnvioLote>2007-01-29T11:16:39</DataEnvioLote>
+      <QtdNotasProcessadas>2</QtdNotasProcessadas>
+      <TempoProcessamento>1</TempoProcessamento>
+      <ValorTotalServicos>2000</ValorTotalServicos>
+    </InformacoesLote>
+  </Cabecalho>
+  <ChaveNFeRPS xmlns="">
+    <ChaveNFe>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <NumeroNFe>51</NumeroNFe>
+      <CodigoVerificacao>LMYDYWCZ</CodigoVerificacao>
+    </ChaveNFe>
+    <ChaveRPS>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <SerieRPS>LLLLL</SerieRPS>
+      <NumeroRPS>1</NumeroRPS>
+    </ChaveRPS>
+  </ChaveNFeRPS>
+  <ChaveNFeRPS xmlns="">
+    <ChaveNFe>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <NumeroNFe>52</NumeroNFe>
+      <CodigoVerificacao>MXTMKXHL</CodigoVerificacao>
+    </ChaveNFe>
+    <ChaveRPS>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <SerieRPS>LLLLL</SerieRPS>
+      <NumeroRPS>2</NumeroRPS>
+    </ChaveRPS>
+  </ChaveNFeRPS>
+</RetornoEnvioLoteRPS>

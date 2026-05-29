@@ -115,6 +115,8 @@ model Workspace {
   obligations    FiscalObligation[]
   communications Communication[]
   invoices       Invoice[]
+  cnpjConsultations CnpjConsultation[]
+  nfeDocuments      NfeDocument[]
 
   @@index([slug])
 }
@@ -154,18 +156,40 @@ model Client {
   portalEnabled Boolean      @default(false)
   portalEmail   String?
   notes         String?
-  tags          String[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  tags             String[]
+  cnpjStatus       String?   // "ATIVA", "INAPTA", "BAIXADA", "SUSPENSA", "NULA"
+  cnpjLastChecked  DateTime? // última vez que a situação foi consultada
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   obligations    FiscalObligation[]
   documents      Document[]
   communications Communication[]
+  cnpjHistory    CnpjConsultation[] // ← novo
+  nfeDocuments      NfeDocument[]
 
   @@unique([workspaceId, cnpj])
   @@index([workspaceId])
   @@index([workspaceId, status])
+}
+
+model CnpjConsultation {
+  id          String   @id @default(cuid())
+  workspaceId String
+  clientId    String
+  cnpj        String
+  status      String   // "ATIVA", "INAPTA", "BAIXADA", "SUSPENSA", "NULA"
+  razaoSocial String?
+  situacao    String?  // descrição completa retornada pela API
+  consultedAt DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([clientId])
+  @@index([workspaceId, consultedAt])
 }
 
 model FiscalObligation {
@@ -221,6 +245,35 @@ model Document {
   @@index([workspaceId, clientId])
 }
 
+model NfeDocument {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  clientId        String?  // null se CNPJ não encontrado entre os clientes
+  chaveAcesso     String   // chave de 44 dígitos da NF-e
+  numero          String   // número da nota
+  serie           String
+  dataEmissao     DateTime
+  cnpjEmitente    String
+  nomeEmitente    String
+  cnpjDestinatario String
+  nomeDestinatario String
+  valorTotal      Int      // em centavos
+  valorIcms       Int?     // em centavos
+  valorIss        Int?     // em centavos
+  naturezaOperacao String?
+  storageKey      String?  // caminho no Supabase (XML original)
+  processedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client    Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, chaveAcesso]) // evita NF-e duplicada
+  @@index([workspaceId])
+  @@index([workspaceId, clientId])
+  @@index([workspaceId, dataEmissao])
+}
+
 model Communication {
   id          String               @id @default(cuid())
   workspaceId String
@@ -250,6 +303,7 @@ model WorkspaceModule {
   enabledAt   DateTime  @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
 
   @@unique([workspaceId, moduleKey])
   @@index([workspaceId])

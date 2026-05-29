@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RetornoConsulta xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.prefeitura.sp.gov.br/nfe">
+  <Cabecalho Versao="1" xmlns="">
+    <Sucesso>true</Sucesso>
+  </Cabecalho>
+  <NFe xmlns="">
+    <Assinatura>ro6Og7L5BMPpYZKXfSSITNe8U9C4a95P9dIspX8R0Okg1CRsA87N08Llaq+q6IVOGLhjGMkAELBIkQ8T0BGR3czgtJAuOcgMlOmGZlgziWAg3Kww3pFD+rYxE+DRgL2M5QXTaZEYwVNj0lZyJpt1nS9LHUqO7PB+ivYRk+ewUVA=</Assinatura>
+    <ChaveNFe>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <NumeroNFe>51</NumeroNFe>
+      <CodigoVerificacao>LMYDYWCZ</CodigoVerificacao>
+    </ChaveNFe>
+    <DataEmissaoNFe>2007-01-29T11:16:39</DataEmissaoNFe>
+    <NumeroLote>2521</NumeroLote>
+    <ChaveRPS>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <SerieRPS>LLLLL</SerieRPS>
+      <NumeroRPS>1</NumeroRPS>
+    </ChaveRPS>
+    <TipoRPS>RPS-M</TipoRPS>
+    <DataEmissaoRPS>2007-01-28</DataEmissaoRPS>
+    <CPFCNPJPrestador>
+      <CNPJ>04642554000143</CNPJ> 
+    </CPFCNPJPrestador>
+      <RazaoSocialPrestador>TIPLAN - CONSULTORIA E SERVIÇOS EM INFORMÁTICA LTDA</RazaoSocialPrestador> 
+    <EnderecoPrestador>
+      <TipoLogradouro>R</TipoLogradouro> 
+      <Logradouro>HERMANO RIBEIRO DA SILVA</Logradouro> 
+      <NumeroEndereco>00160</NumeroEndereco> 
+      <ComplementoEndereco>15 ANDAR</ComplementoEndereco> 
+      <Bairro>IBIRAPUERA</Bairro> 
+      <Cidade>3550308</Cidade> 
+      <UF>SP</UF> 
+      <CEP>4008090</CEP> 
+    </EnderecoPrestador>
+    <StatusNFe>N</StatusNFe>
+    <TributacaoNFe>T</TributacaoNFe>
+    <OpcaoSimples>0</OpcaoSimples>
+    <ValorServicos>1000</ValorServicos>
+    <ValorDeducoes>100</ValorDeducoes>
+    <CodigoServico>2658</CodigoServico>
+    <AliquotaServicos>0.05</AliquotaServicos>
+    <ValorISS>45</ValorISS>
+    <ValorCredito>13.5</ValorCredito>
+    <ISSRetido>false</ISSRetido>
+    <CPFCNPJTomador>
+      <CPF>18564071878</CPF>
+    </CPFCNPJTomador>
+    <RazaoSocialTomador>PATRICIA TUPYNAMBA</RazaoSocialTomador>
+    <EnderecoTomador>
+      <TipoLogradouro>R</TipoLogradouro>
+      <Logradouro>LIMA e SILVA</Logradouro>
+      <NumeroEndereco>100</NumeroEndereco>
+      <ComplementoEndereco>ap 2202</ComplementoEndereco>
+      <Bairro>IBIRAPUERA</Bairro>
+      <Cidade>3550308</Cidade>
+      <UF>SP</UF>
+      <CEP>4565000</CEP>
+    </EnderecoTomador>
+    <EmailTomador>ptupynamba@prodam.sp.gov.br</EmailTomador>
+    <Discriminacao>Desenvolvimento de Web Site Pessoal</Discriminacao>
+  </NFe>
+  <NFe xmlns="">
+    <Assinatura>jkTucEqcj8Qkes8RalHZW+p6Zc6weeqnPabOK7IHSkyVTO9reNqpMclEh8n6nHXSPGcnsvhQx4JWx/sK26IxVTOMKp3i41/1w3OyC9SvL0VPtzrARKQMEqTf2kqwu9skHMzw5d4T/jfjYLrp5n/YAbMqKQ5zaa4qAcY0A066OAc=</Assinatura>
+    <ChaveNFe>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <NumeroNFe>52</NumeroNFe>
+      <CodigoVerificacao>MXTMKXHL</CodigoVerificacao>
+    </ChaveNFe>
+    <DataEmissaoNFe>2007-01-29T11:16:39</DataEmissaoNFe>
+    <NumeroLote>2521</NumeroLote>
+    <ChaveRPS>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <SerieRPS>LLLLL</SerieRPS>
+      <NumeroRPS>2</NumeroRPS>
+    </ChaveRPS>
+    <TipoRPS>RPS-M</TipoRPS>
+    <DataEmissaoRPS>2007-01-28</DataEmissaoRPS>
+    <CPFCNPJPrestador>
+      <CNPJ>04642554000143</CNPJ> 
+    </CPFCNPJPrestador>
+      <RazaoSocialPrestador>TIPLAN - CONSULTORIA E SERVIÇOS EM INFORMÁTICA LTDA</RazaoSocialPrestador> 
+    <EnderecoPrestador>
+      <TipoLogradouro>R</TipoLogradouro> 
+      <Logradouro>HERMANO RIBEIRO DA SILVA</Logradouro> 
+      <NumeroEndereco>00160</NumeroEndereco> 
+      <ComplementoEndereco>15 ANDAR</ComplementoEndereco> 
+      <Bairro>IBIRAPUERA</Bairro> 
+      <Cidade>3550308</Cidade> 
+      <UF>SP</UF> 
+      <CEP>4008090</CEP> 
+    </EnderecoPrestador>
+    <StatusNFe>N</StatusNFe>
+    <TributacaoNFe>T</TributacaoNFe>
+    <OpcaoSimples>0</OpcaoSimples>
+    <ValorServicos>1000</ValorServicos>
+    <ValorDeducoes>100</ValorDeducoes>
+    <ValorPIS>10</ValorPIS>
+    <ValorCOFINS>20</ValorCOFINS>
+    <ValorINSS>30</ValorINSS>
+    <ValorIR>40</ValorIR>
+    <ValorCSLL>50</ValorCSLL>
+    <CodigoServico>2658</CodigoServico>
+    <AliquotaServicos>0.05</AliquotaServicos>
+    <ValorISS>45</ValorISS>
+    <ValorCredito>4.5</ValorCredito>
+    <ISSRetido>false</ISSRetido>
+    <CPFCNPJTomador>
+      <CNPJ>06215299000188</CNPJ>
+    </CPFCNPJTomador>
+    <RazaoSocialTomador>GRIXCO TECNOLOGIA EM INFORMATICA LTDA</RazaoSocialTomador>
+    <EnderecoTomador>
+      <TipoLogradouro>R</TipoLogradouro>
+      <Logradouro>AUGUSTA</Logradouro>
+      <NumeroEndereco>01642</NumeroEndereco>
+      <ComplementoEndereco>3 AND</ComplementoEndereco>
+      <Bairro>CERQUEIRA CESAR</Bairro>
+      <Cidade>3550308</Cidade>
+      <UF>SP</UF>
+      <CEP>1304001</CEP>
+    </EnderecoTomador>
+    <Discriminacao>Manutenção de Sistema</Discriminacao>
+  </NFe>
+</RetornoConsulta>

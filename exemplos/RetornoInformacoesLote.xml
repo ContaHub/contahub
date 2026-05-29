@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RetornoInformacoesLote xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.prefeitura.sp.gov.br/nfe">
+  <Cabecalho Versao="1" xmlns="">
+    <Sucesso>true</Sucesso>
+    <InformacoesLote>
+      <NumeroLote>379</NumeroLote>
+      <InscricaoPrestador>31000000</InscricaoPrestador>
+      <CPFCNPJRemetente>
+        <CNPJ>04642554000143</CNPJ>
+      </CPFCNPJRemetente>
+      <DataEnvioLote>2007-01-26T09:32:20</DataEnvioLote>
+      <QtdNotasProcessadas>3</QtdNotasProcessadas>
+      <TempoProcessamento>1</TempoProcessamento>
+      <ValorTotalServicos>3000</ValorTotalServicos>
+      <ValorTotalDeducoes>300</ValorTotalDeducoes>
+    </InformacoesLote>
+  </Cabecalho>
+</RetornoInformacoesLote>

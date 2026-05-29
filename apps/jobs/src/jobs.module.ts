@@ -25,11 +25,11 @@ const url = new URL(REDIS_URL);
         removeOnFail: 200,
       },
     }),
-    BullModule.registerQueue(
-      { name: QUEUES.FISCAL_REMINDERS },
-      { name: QUEUES.NOTIFICATIONS },
-      { name: QUEUES.DOCUMENTS }
-    ),
+      BullModule.registerQueue(
+        { name: QUEUES.FISCAL_REMINDERS },
+        { name: QUEUES.NOTIFICATIONS },
+        { name: QUEUES.DOCUMENTS }
+      ),
   ],
   providers: [
     FiscalReminderWorker,

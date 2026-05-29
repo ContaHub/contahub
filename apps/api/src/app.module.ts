@@ -11,6 +11,8 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { DocumentsModule } from "./modules/documents/documents.module";
 import { PortalModule } from "./modules/portal/portal.module";
 import { WorkspaceModule } from './modules/workspace/workspace.module';
+import { CnpjModule } from './modules/cnpj/cnpj.module';
+import { NfeModule } from './modules/nfe/nfe.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { WorkspaceModule } from './modules/workspace/workspace.module';
     DocumentsModule,
     PortalModule,
     WorkspaceModule,
+    CnpjModule,
+    NfeModule,
   ],
 })
 export class AppModule {
