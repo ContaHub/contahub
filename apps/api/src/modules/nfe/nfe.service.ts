@@ -77,15 +77,17 @@ export class NfeService {
 
     let clientId: string | null = null;
 
-    // Busca primeiro pelo CNPJ destinatário, depois pelo emitente
-    for (const cnpj of [cnpjDestinatarioLimpo, cnpjEmitenteLimpo]) {
-      const cliente = await prisma.client.findFirst({
-        where: {
-          workspaceId,
-          cnpj: { contains: cnpj },
-        },
-        select: { id: true, name: true },
-      });
+    // Busca todos os clientes do workspace e compara CNPJs normalizados
+    // Necessário pois o banco armazena com formatação (11.222.333/0001-44)
+    // e o XML vem sem formatação (11222333000144)
+    const todosClientes = await prisma.client.findMany({
+      where: { workspaceId },
+      select: { id: true, name: true, cnpj: true },
+    });
+    for (const cnpjBusca of [cnpjDestinatarioLimpo, cnpjEmitenteLimpo]) {
+      const cliente = todosClientes.find(
+        (c) => c.cnpj.replace(/\D/g, '') === cnpjBusca,
+      );
 
       if (cliente) {
         clientId = cliente.id;
