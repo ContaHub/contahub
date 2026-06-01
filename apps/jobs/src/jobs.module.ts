@@ -4,9 +4,11 @@ import { QUEUES } from "@contahub/shared";
 import { FiscalReminderWorker } from "./workers/fiscal-reminder.worker";
 import { NotificationWorker } from "./workers/notification.worker";
 import { DocumentWorker } from "./workers/document.worker";
+import { EcacBrowserService } from './services/ecac-browser.service';
 import { WahaClientService } from "./services/waha-client.service";
 import { EmailService } from "./services/email.service";
 import { BullBoardModule } from "./workers/bull-board.module";
+import { EcacWorker } from './workers/ecac.worker';
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const url = new URL(REDIS_URL);
@@ -36,6 +38,7 @@ const url = new URL(REDIS_URL);
     NotificationWorker,
     DocumentWorker,
     WahaClientService,
+    EcacBrowserService,
     EmailService,       // ← NOVO Sprint 2
     BullBoardModule,
   ],

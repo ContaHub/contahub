@@ -1,8 +1,15 @@
-"use client";
+#!/usr/bin/env python3
+"""
+Adiciona o botão 🔐 Certificado e o CertificateModal na clients/page.tsx
+"""
+import sys
+
+PATH = "apps/web/app/(dashboard)/dashboard/clients/page.tsx"
+
+NEW_CONTENT = '''"use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound } from "lucide-react";
 import {
   Card, Badge, Button, IconButton,
   FilterBar, SearchInput, SelectFilter,
@@ -35,7 +42,6 @@ function avatarColor(name: string) {
 
 export default function ClientsPage() {
   const openMenu = useMobileMenu();
-  const router = useRouter();
   const { getToken } = useAuth();
 
   const [clients, setClients] = useState<any[]>([]);
@@ -180,15 +186,6 @@ export default function ClientsPage() {
                       ✓ Ativa
                     </span>
                   )}
-                  {c.ecacAlertCount > 0 && (
-                    <span
-                      onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit bg-red-50 text-red-600 cursor-pointer hover:bg-red-100 transition-colors"
-                      title="Ver pendências na Receita Federal"
-                    >
-                      ⚠️ {c.ecacAlertCount} RF
-                    </span>
-                  )}
                 </div>
 
                 {/* Regime */}
@@ -217,11 +214,6 @@ export default function ClientsPage() {
                     icon={checkingId === c.id ? Loader : Search}
                     label="Verificar CNPJ"
                     onClick={() => checkingId !== c.id && handleVerificarCnpj(c)}
-                  />
-                  <IconButton
-                    icon={ShieldAlert}
-                    label="Ver e-CAC"
-                    onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)}
                   />
                   <IconButton
                     icon={KeyRound}
@@ -282,3 +274,21 @@ export default function ClientsPage() {
     </div>
   );
 }
+'''
+
+try:
+    with open(PATH, "w", encoding="utf-8") as f:
+        f.write(NEW_CONTENT)
+    print(f"✓ {PATH} atualizado")
+    print("\nO que foi adicionado:")
+    print("  ✓ Import CertificateModal")
+    print("  ✓ Import KeyRound (ícone de chave do lucide-react)")
+    print("  ✓ Estado certClient")
+    print("  ✓ IconButton com KeyRound nas ações de cada linha")
+    print("  ✓ IconButton KeyRound na lista mobile")
+    print("  ✓ <CertificateModal> no JSX")
+    print("\nTeste: passe o mouse sobre um cliente em /dashboard/clients")
+    print("Deve aparecer: 🔍 | 🔑 | ✏️ | 🗑")
+except Exception as e:
+    print(f"ERRO: {e}")
+    sys.exit(1)

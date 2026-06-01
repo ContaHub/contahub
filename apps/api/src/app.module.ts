@@ -13,6 +13,8 @@ import { PortalModule } from "./modules/portal/portal.module";
 import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { CnpjModule } from './modules/cnpj/cnpj.module';
 import { NfeModule } from './modules/nfe/nfe.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
+import { EcacModule } from './modules/ecac/ecac.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { NfeModule } from './modules/nfe/nfe.module';
     WorkspaceModule,
     CnpjModule,
     NfeModule,
+    CertificatesModule,
+    EcacModule,
   ],
 })
 export class AppModule {

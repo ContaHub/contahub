@@ -6,6 +6,7 @@ export const QUEUES = {
   FISCAL_REMINDERS: 'fiscal-reminders',
   NOTIFICATIONS:    'notifications',
   DOCUMENTS:        'documents',
+  ECAC:             'ecac-consultations',
 } as const;
 
 export const JOB_NAMES = {
@@ -16,6 +17,7 @@ export const JOB_NAMES = {
   // Fila: notifications
   SEND_WHATSAPP: 'send-whatsapp',
   SEND_EMAIL:    'send-email',
+  ECAC_CONSULT:  'ecac-consult',
 
   // Fila: documents
   PROCESS_UPLOAD:          'process-upload',

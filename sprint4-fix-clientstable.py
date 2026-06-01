@@ -1,4 +1,16 @@
-"use client";
+#!/usr/bin/env python3
+"""
+Corrige o ClientsTable.tsx:
+1. Move o import do CertificateModal para o lugar certo
+2. Adiciona estado certClient
+3. Adiciona botão 🔐 Certificado nas ações
+4. Adiciona o CertificateModal no JSX
+"""
+import sys
+
+PATH = "apps/web/components/clients/ClientsTable.tsx"
+
+NEW_CONTENT = '''"use client";
 
 import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
@@ -186,3 +198,18 @@ export function ClientsTable({ clients, onEdit }: ClientsTableProps) {
     </>
   );
 }
+'''
+
+try:
+    with open(PATH, "w", encoding="utf-8") as f:
+        f.write(NEW_CONTENT)
+    print(f"✓ {PATH} reescrito com sucesso")
+    print("\nO que foi adicionado:")
+    print("  ✓ Import do CertificateModal no lugar correto")
+    print("  ✓ Estado certClient")
+    print("  ✓ Botão 🔐 Certificado nas ações de cada linha")
+    print("  ✓ <CertificateModal> no JSX")
+    print("\nTeste: passe o mouse sobre um cliente em /dashboard/clients")
+except Exception as e:
+    print(f"ERRO: {e}")
+    sys.exit(1)
