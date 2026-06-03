@@ -79,6 +79,7 @@ export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
   IN_PROGRESS: { label: "Em andamento", class: "bg-blue-100 text-blue-700" },
   COMPLETED: { label: "Concluída", class: "bg-green-100 text-green-700" },
   OVERDUE: { label: "Atrasada", class: "bg-red-100 text-red-700" },
+  CANCELED: { label: "Cancelada", class: "bg-gray-100 text-gray-500" },
 };
 
 // Formata tamanho de arquivo

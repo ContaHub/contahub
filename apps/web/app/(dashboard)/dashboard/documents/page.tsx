@@ -264,6 +264,7 @@ export default function DocumentsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [nfeDetail, setNfeDetail]     = useState<NfeDocument | null>(null);
   const [nfeToDelete, setNfeToDelete] = useState<NfeDocument | null>(null);
+  const [docToDelete, setDocToDelete] = useState<any | null>(null);
 
   const loadDocs = () =>
     getDocuments().then((r) => setDocs(r.data || [])).catch(() => {});
@@ -291,10 +292,15 @@ export default function DocumentsPage() {
     if (r.data?.url) window.open(r.data.url, "_blank");
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Remover este documento?")) return;
-    await deleteDocument(id);
-    loadDocs();
+  async function confirmDeleteDoc() {
+    if (!docToDelete) return;
+    try {
+      await deleteDocument(docToDelete.id);
+      setDocToDelete(null);
+      loadDocs();
+    } catch (err) {
+      console.error("Erro ao remover documento:", err);
+    }
   }
 
 async function confirmDeleteNfe() {
@@ -423,7 +429,7 @@ async function confirmDeleteNfe() {
                   <span className="text-[13px] text-slate-500">{fmtDate(d.createdAt)}</span>
                   <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <IconButton icon={Download} label="Baixar" onClick={() => handleDownload(d.id)} />
-                    <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => handleDelete(d.id)} />
+                    <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setDocToDelete(d)} />
                   </div>
                 </div>
               ))}
@@ -572,6 +578,16 @@ async function confirmDeleteNfe() {
           confirmLabel="Remover"
           onConfirm={confirmDeleteNfe}
           onCancel={() => setNfeToDelete(null)}
+        />
+      )}
+
+      {docToDelete && (
+        <ConfirmModal
+          title="Remover Documento"
+          message={`Deseja remover o documento "${docToDelete.name}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Remover"
+          onConfirm={confirmDeleteDoc}
+          onCancel={() => setDocToDelete(null)}
         />
       )}
     </div>

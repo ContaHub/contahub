@@ -42,7 +42,7 @@ export class EcacService {
   }
 
   /** Retorna o último resultado de consulta de um cliente */
-  async getResultado(workspaceId: string, clientId: string) {
+  async getResultado(workspaceId: string, clientId: string): Promise<any> {
     const client = await this.prisma.client.findFirst({
       where: { id: clientId, workspaceId },
     });
@@ -82,7 +82,7 @@ export class EcacService {
   }
 
   /** Histórico de consultas de um cliente */
-  async getHistorico(workspaceId: string, clientId: string) {
+  async getHistorico(workspaceId: string, clientId: string): Promise<any> {
     const consultas = await this.prisma.ecacConsultation.findMany({
       where: { clientId, workspaceId },
       orderBy: { consultedAt: 'desc' },

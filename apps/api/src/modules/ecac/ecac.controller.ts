@@ -19,7 +19,7 @@ export class EcacController {
    * Retorna o último resultado de consulta e-CAC do cliente.
    */
   @Get(':clientId/resultado')
-  async getResultado(@Param('clientId') clientId: string, @Req() req: any) {
+  async getResultado(@Param('clientId') clientId: string, @Req() req: any): Promise<any> {
     return this.ecacService.getResultado(req.workspaceId, clientId);
   }
 
@@ -37,7 +37,7 @@ export class EcacController {
    * Últimas 10 consultas e-CAC de um cliente.
    */
   @Get(':clientId/historico')
-  async getHistorico(@Param('clientId') clientId: string, @Req() req: any) {
+  async getHistorico(@Param('clientId') clientId: string, @Req() req: any): Promise<any> {
     return this.ecacService.getHistorico(req.workspaceId, clientId);
   }
 }

@@ -1,60 +1,105 @@
-import { apiFetch } from "./api";
+/**
+ * lib/fiscal.ts
+ * Funções de acesso à API de obrigações fiscais.
+ *
+ * IMPORTANTE: todas as funções recebem `token` como parâmetro.
+ * O token vem do Clerk via `getToken()` no componente — nunca
+ * buscamos /api/auth/token aqui (essa rota retorna 404 no novo setup).
+ */
 
-export interface FiscalObligation {
-  id: string;
-  type: string;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "OVERDUE" | "CANCELED";
-  competenceMonth: number;
-  competenceYear: number;
-  dueDate: string;
-  completedAt?: string;
-  amount?: number;
-  notes?: string;
-  assignedTo?: string;
-  client: {
-    id: string;
-    name: string;
-    cnpj: string;
-  };
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
+
+// ─── Listar obrigações ────────────────────────────────────────
+export async function getObligations(
+  token: string | null,
+  filters?: { month?: string; status?: string; clientId?: string }
+) {
+  const params = new URLSearchParams();
+  if (filters?.month)    params.set("month",    filters.month);
+  if (filters?.status)   params.set("status",   filters.status);
+  if (filters?.clientId) params.set("clientId", filters.clientId);
+  // Cache-buster para evitar 304 Not Modified
+  params.set("t", String(Date.now()));
+
+  const qs = params.toString() ? `?${params.toString()}` : "";
+
+  const res = await fetch(`${API_URL}/api/v1/fiscal/obligations${qs}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Erro ao buscar obrigações" }));
+    throw new Error(err.message ?? "Erro ao buscar obrigações");
+  }
+
+  return res.json();
 }
 
-export interface CreateObligationData {
-  clientId: string;
-  type: string;
-  competenceMonth: number;
-  competenceYear: number;
-  dueDate: string;
-  amount?: number;
-  notes?: string;
-}
-
-export async function getObligations(params?: {
-  clientId?: string;
-  status?: string;
-  month?: number;
-  year?: number;
-}): Promise<{ data: FiscalObligation[] }> {
-  const query = new URLSearchParams();
-  if (params?.clientId) query.set("clientId", params.clientId);
-  if (params?.status) query.set("status", params.status);
-  if (params?.month) query.set("month", String(params.month));
-  if (params?.year) query.set("year", String(params.year));
-  return apiFetch(`/fiscal/obligations?${query.toString()}`);
-}
-
-export async function getUpcomingObligations(days = 7): Promise<{ data: FiscalObligation[] }> {
-  return apiFetch(`/fiscal/obligations/upcoming?days=${days}`);
-}
-
-export async function createObligation(data: CreateObligationData): Promise<{ data: FiscalObligation }> {
-  return apiFetch("/fiscal/obligations", {
+// ─── Criar obrigação ──────────────────────────────────────────
+export async function createObligation(
+  data: Record<string, unknown>,
+  token: string | null
+) {
+  const res = await fetch(`${API_URL}/api/v1/fiscal/obligations`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify(data),
   });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Erro ao criar obrigação" }));
+    throw new Error(err.message ?? "Erro ao criar obrigação");
+  }
+
+  return res.json();
 }
 
-export async function completeObligation(id: string): Promise<{ data: FiscalObligation; message: string }> {
-  return apiFetch(`/fiscal/obligations/${id}/complete`, { method: "PUT" });
+// ─── Concluir obrigação ───────────────────────────────────────
+export async function completeObligation(
+  id: string,
+  token: string | null
+) {
+  const res = await fetch(
+    `${API_URL}/api/v1/fiscal/obligations/${id}/complete`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Content-Type necessário mesmo sem body para alguns servidores NestJS
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Erro ao concluir obrigação" }));
+    throw new Error(err.message ?? "Erro ao concluir obrigação");
+  }
+
+  return res.json();
+}
+
+// ─── Deletar obrigação ────────────────────────────────────────
+export async function deleteObligation(
+  id: string,
+  token: string | null
+) {
+  const res = await fetch(`${API_URL}/api/v1/fiscal/obligations/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  // DELETE pode retornar 204 sem body
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Erro ao remover obrigação" }));
+    throw new Error(err.message ?? "Erro ao remover obrigação");
+  }
 }
 
 // Labels PT-BR para tipo de obrigação
@@ -76,30 +121,8 @@ export const OBLIGATION_LABELS: Record<string, string> = {
   OUTRO: "Outro",
 };
 
-// Labels e cores para status
-export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
-  PENDING: { label: "Pendente", class: "bg-yellow-100 text-yellow-700" },
-  IN_PROGRESS: { label: "Em andamento", class: "bg-blue-100 text-blue-700" },
-  COMPLETED: { label: "Concluída", class: "bg-green-100 text-green-700" },
-  OVERDUE: { label: "Atrasada", class: "bg-red-100 text-red-700" },
-  CANCELED: { label: "Cancelada", class: "bg-gray-100 text-gray-500" },
-};
-
 // Nomes dos meses em PT-BR
 export const MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
-
-// Formata valor em centavos para BRL
-export function formatCurrency(cents: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(cents / 100);
-}
-
-// Formata data no padrão BR
-export function formatDateBR(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("pt-BR");
-}

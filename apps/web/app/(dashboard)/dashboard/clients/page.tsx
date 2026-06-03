@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Card, Badge, Button, IconButton,
   FilterBar, SearchInput, SelectFilter,
-  EmptyState, PageHeader,
+  EmptyState, PageHeader, ConfirmModal,
 } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { ClientModal } from "@/components/clients/ClientModal";
@@ -45,6 +45,7 @@ export default function ClientsPage() {
   const [editClient, setEditClient] = useState<any>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [certClient, setCertClient] = useState<any>(null);
+  const [clientToDelete, setClientToDelete] = useState<any | null>(null);
 
   const load = async () => {
     const r = await getClients();
@@ -62,10 +63,15 @@ export default function ClientsPage() {
     return matchSearch && matchStatus;
   });
 
-  async function handleDelete(id: string) {
-    if (!confirm("Remover este cliente?")) return;
-    await deleteClient(id);
-    load();
+  async function confirmDeleteClient() {
+    if (!clientToDelete) return;
+    try {
+      await deleteClient(clientToDelete.id);
+      setClientToDelete(null);
+      load();
+    } catch (err) {
+      console.error("Erro ao remover cliente:", err);
+    }
   }
 
   async function handleVerificarCnpj(client: any) {
@@ -229,7 +235,7 @@ export default function ClientsPage() {
                     onClick={() => setCertClient(c)}
                   />
                   <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
-                  <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => handleDelete(c.id)} />
+                  <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setClientToDelete(c)} />
                 </div>
               </div>
             ))}
@@ -277,6 +283,16 @@ export default function ClientsPage() {
           clientId={certClient.id}
           clientName={certClient.name}
           onClose={() => setCertClient(null)}
+        />
+      )}
+
+      {clientToDelete && (
+        <ConfirmModal
+          title="Remover Cliente"
+          message={`Deseja remover o cliente "${clientToDelete.name}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Remover"
+          onConfirm={confirmDeleteClient}
+          onCancel={() => setClientToDelete(null)}
         />
       )}
     </div>

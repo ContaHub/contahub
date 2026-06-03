@@ -76,9 +76,19 @@ export async function updateClient(
   });
 }
 
-// Inativa um cliente (soft delete)
 export async function deleteClient(id: string): Promise<void> {
-  return apiFetch(`/clients/${id}`, { method: "DELETE" });
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
+  const tokenRes = await fetch("/api/auth/token");
+  const { token } = await tokenRes.json();
+  const res = await fetch(`${API_URL}/api/v1/clients/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Erro ao remover cliente" }));
+    throw new Error(err.message ?? "Erro ao remover cliente");
+  }
+  // Não faz .json() — DELETE retorna 204 sem body
 }
 
 // Labels em PT-BR para regime tributário

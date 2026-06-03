@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { createObligation, OBLIGATION_LABELS, MONTHS } from "@/lib/fiscal";
 import { getClients, Client } from "@/lib/clients";
 
@@ -10,6 +11,7 @@ interface ObligationModalProps {
 }
 
 export function ObligationModal({ onClose, onSuccess }: ObligationModalProps) {
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
@@ -41,6 +43,7 @@ export function ObligationModal({ onClose, onSuccess }: ObligationModalProps) {
     setLoading(true);
     setError("");
     try {
+      const token = await getToken();
       await createObligation({
         clientId: form.clientId,
         type: form.type,
@@ -49,7 +52,7 @@ export function ObligationModal({ onClose, onSuccess }: ObligationModalProps) {
         dueDate: new Date(form.dueDate).toISOString(),
         amount: form.amount ? Math.round(Number(form.amount) * 100) : undefined,
         notes: form.notes || undefined,
-      });
+      }, token);
       onSuccess();
       onClose();
     } catch (err: any) {

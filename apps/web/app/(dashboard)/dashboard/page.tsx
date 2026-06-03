@@ -13,6 +13,7 @@ import {
 import { MetricCard, Card, SectionHeader, Badge } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { PageHeader } from "@/components/ui";
+import { useAuth } from "@clerk/nextjs";
 import { getDashboardStats } from "@/lib/dashboard";
 import { getObligations } from "@/lib/fiscal";
 
@@ -50,12 +51,23 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [obligations, setObligations] = useState<any[]>([]);
 
+  const { getToken } = useAuth();
+
   useEffect(() => {
     getDashboardStats().then((r) => setStats(r.data)).catch(() => {});
-    getObligations({ status: "PENDING" }).then((r) =>
-      setObligations((r.data || []).slice(0, 5))
-    ).catch(() => {});
-  }, []);
+    
+    async function loadUpcoming() {
+      try {
+        const token = await getToken();
+        const r = await getObligations(token, { status: "PENDING" });
+        setObligations((r.data || []).slice(0, 5));
+      } catch (err) {
+        console.error("Erro ao carregar obrigações do dashboard:", err);
+      }
+    }
+    
+    loadUpcoming();
+  }, [getToken]);
 
   const today = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",

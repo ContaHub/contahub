@@ -1,5 +1,6 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsArray, MinLength, Matches } from "class-validator";
+import { IsString, IsEmail, IsOptional, IsEnum, IsArray, IsBoolean, MinLength, Matches } from "class-validator";
 import { TaxRegime } from "@contahub/database";
+
 export class CreateClientDto {
   @IsString() @MinLength(2) name!: string;
   @IsString() @IsOptional() tradeName?: string;
@@ -10,4 +11,6 @@ export class CreateClientDto {
   @IsString() @IsOptional() whatsapp?: string;
   @IsString() @IsOptional() notes?: string;
   @IsArray() @IsOptional() tags?: string[];
+  @IsBoolean() @IsOptional() portalEnabled?: boolean;
+  @IsEmail() @IsOptional() portalEmail?: string;
 }
