@@ -5,7 +5,7 @@ import { ReactNode } from "react";
 
 // ─── Badge ───────────────────────────────────────────────────────────────────
 
-type BadgeVariant = "success" | "warning" | "danger" | "info" | "gray" | "review";
+type BadgeVariant = "success" | "warning" | "danger" | "info" | "gray" | "review" | "purple";
 
 const badgeStyles: Record<BadgeVariant, string> = {
   success: "bg-green-50 text-green-700 border border-green-200",
@@ -14,6 +14,7 @@ const badgeStyles: Record<BadgeVariant, string> = {
   info:    "bg-blue-50  text-blue-700  border border-blue-200",
   gray:    "bg-slate-50 text-slate-600 border border-slate-200",
   review:  "bg-orange-50 text-orange-700 border border-orange-200",
+  purple:  "bg-orange-50 text-orange-700 border border-orange-200",
 };
 
 export function Badge({

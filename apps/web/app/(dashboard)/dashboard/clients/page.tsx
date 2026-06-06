@@ -14,6 +14,7 @@ import CertificateModal from "@/components/certificates/CertificateModal";
 import { getClients, deleteClient } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
+import { getClientDisplayName } from "@contahub/shared";
 
 function clientInitials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -57,7 +58,7 @@ export default function ClientsPage() {
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
     const matchSearch =
-      !q || c.name?.toLowerCase().includes(q) || c.cnpj?.includes(q);
+      !q || c.tradeName?.toLowerCase().includes(q) || c.cnpj?.includes(q);
     const matchStatus =
       statusFilter === "all" || c.status?.toLowerCase() === statusFilter;
     return matchSearch && matchStatus;
@@ -123,8 +124,9 @@ export default function ClientsPage() {
             value={search}
             onChange={setSearch}
           />
-          <SelectFilter>Todos os status</SelectFilter>
+        {/*<SelectFilter>Todos os status</SelectFilter>
           <SelectFilter>Todos os regimes</SelectFilter>
+          */}
         </FilterBar>
 
         <Card>
@@ -162,7 +164,7 @@ export default function ClientsPage() {
                     {clientInitials(c.name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-slate-900 truncate">{c.name}</p>
+                    <p className="text-[13px] font-semibold text-slate-900 truncate">{getClientDisplayName(c)}</p>
                     <p className="text-[11px] text-slate-400">{c.type === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}</p>
                   </div>
                 </div>
@@ -252,7 +254,7 @@ export default function ClientsPage() {
                   {clientInitials(c.name)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-slate-900 truncate">{c.name}</p>
+                  <p className="text-[13px] font-semibold text-slate-900 truncate">{getClientDisplayName(c)}</p>
                   <p className="text-[12px] text-slate-500 truncate">{c.cnpj || c.cpf} · {c.taxRegime}</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -288,9 +290,9 @@ export default function ClientsPage() {
 
       {clientToDelete && (
         <ConfirmModal
-          title="Remover Cliente"
-          message={`Deseja remover o cliente "${clientToDelete.name}"? Esta ação não pode ser desfeita.`}
-          confirmLabel="Remover"
+          title="Inativar Cliente"
+          message={`Deseja inativar o cliente "${clientToDelete.name}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Inativar"
           onConfirm={confirmDeleteClient}
           onCancel={() => setClientToDelete(null)}
         />

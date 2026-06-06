@@ -17,3 +17,5 @@ export * from './queues.config';
 
 // Notification & Email types (Sprint 2)
 export * from './notification.types';
+
+export * from "./client.utils";

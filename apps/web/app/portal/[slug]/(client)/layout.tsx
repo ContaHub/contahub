@@ -12,7 +12,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
   const navItems = [
     { href: `/portal/${slug}/dashboard`, label: "Início" },
     { href: `/portal/${slug}/documents`, label: "Documentos" },
-    { href: `/portal/${slug}/reports`, label: "Relatórios" },
+    { href: `/portal/${slug}/reports`, label: "Documentos Para Aprovação" },
     { href: `/portal/${slug}/obligations`, label: "Obrigações" },
   ];
 

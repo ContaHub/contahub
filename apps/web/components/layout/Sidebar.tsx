@@ -2,17 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useAuth } from "@clerk/nextjs";
+import { useEffect, useState, useCallback } from "react";
 import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  Files,
-  Bell,
-  Settings,
-  Layers,
-  Calculator,
-  X,
+  LayoutDashboard, Users, FileText, Files,
+  Bell, Settings, Layers, Calculator, X,
 } from "lucide-react";
 
 interface NavItemData {
@@ -24,12 +18,6 @@ interface NavItemData {
   external?: boolean;
 }
 
-const NAV_MAIN: NavItemData[] = [
-  { href: "/dashboard",           label: "Dashboard",  icon: LayoutDashboard },
-  { href: "/dashboard/clients",   label: "Clientes",   icon: Users },
-  { href: "/dashboard/fiscal",    label: "Fiscal",     icon: FileText, badge: "2", badgeVariant: "danger" },
-  { href: "/dashboard/documents", label: "Documentos", icon: Files },
-];
 const NAV_COMMS: NavItemData[] = [
   { href: "/dashboard/notifications", label: "Notificações", icon: Bell },
 ];
@@ -45,29 +33,19 @@ function NavItem({
   badge?: string; badgeVariant?: "danger" | "info";
   external?: boolean; active?: boolean; onClick?: () => void;
 }) {
-  const base =
-    "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] transition-all cursor-pointer select-none group";
+  const base = "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] transition-all cursor-pointer select-none group";
   const cls = active
     ? `${base} bg-blue-600/20 text-white`
     : `${base} text-slate-400 hover:bg-slate-800 hover:text-slate-200`;
 
   const inner = (
     <>
-      <Icon
-        size={17}
-        className={`flex-shrink-0 transition-colors ${
-          active ? "text-blue-400" : "text-slate-500 group-hover:text-slate-400"
-        }`}
-      />
+      <Icon size={17} className={`flex-shrink-0 transition-colors ${active ? "text-blue-400" : "text-slate-500 group-hover:text-slate-400"}`} />
       <span className="flex-1 truncate">{label}</span>
       {badge && (
-        <span
-          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-            badgeVariant === "danger"
-              ? "bg-red-600 text-white"
-              : "bg-blue-400/20 text-blue-400"
-          }`}
-        >
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+          badgeVariant === "danger" ? "bg-red-600 text-white" : "bg-blue-400/20 text-blue-400"
+        }`}>
           {badge}
         </span>
       )}
@@ -75,31 +53,57 @@ function NavItem({
   );
 
   if (external) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={cls} onClick={onClick}>
-        {inner}
-      </a>
-    );
+    return <a href={href} target="_blank" rel="noopener noreferrer" className={cls} onClick={onClick}>{inner}</a>;
   }
-  return (
-    <Link href={href} className={cls} onClick={onClick}>
-      {inner}
-    </Link>
-  );
+  return <Link href={href} className={cls} onClick={onClick}>{inner}</Link>;
 }
 
-export function Sidebar({
-  mobileOpen,
-  onClose,
-}: {
-  mobileOpen: boolean;
-  onClose: () => void;
-}) {
+export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const { getToken } = useAuth();
+  const [fiscalBadge, setFiscalBadge] = useState<string | undefined>(undefined);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
+
+  // Busca obrigações pendentes/vencidas para o badge
+  const loadBadge = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/v1/fiscal/obligations?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = data?.data ?? data ?? [];
+      const count = list.filter((o: any) => o.status === "PENDING" || o.status === "OVERDUE").length;
+      setFiscalBadge(count > 0 ? String(count) : undefined);
+    } catch {
+      // Silencioso — badge não é crítico
+    }
+  }, [getToken, API_URL]);
+
+  useEffect(() => {
+    loadBadge();
+    // Atualiza o badge a cada 60 segundos
+    const interval = setInterval(loadBadge, 60_000);
+    return () => clearInterval(interval);
+  }, [loadBadge]);
+
+  // Atualiza o badge quando sai da página fiscal (pode ter concluído obrigações)
+  useEffect(() => {
+    loadBadge();
+  }, [pathname, loadBadge]);
+
+  const NAV_MAIN: NavItemData[] = [
+    { href: "/dashboard",           label: "Dashboard",  icon: LayoutDashboard },
+    { href: "/dashboard/clients",   label: "Clientes",   icon: Users },
+    { href: "/dashboard/fiscal",    label: "Fiscal",     icon: FileText, badge: fiscalBadge, badgeVariant: "danger" },
+    { href: "/dashboard/documents", label: "Documentos", icon: Files },
+  ];
+
   const isActive = (href: string) =>
-    href === "/dashboard"
-      ? pathname === "/dashboard"
-      : pathname.startsWith(href);
+    href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
   const content = (
     <div className="flex flex-col h-full bg-[#0F172A] w-56">
@@ -108,37 +112,25 @@ export function Sidebar({
         <div className="w-[34px] h-[34px] bg-blue-600 rounded-[9px] flex items-center justify-center flex-shrink-0">
           <Calculator size={17} className="text-white" />
         </div>
-        <span className="text-[15px] font-bold text-slate-50 tracking-tight flex-1">
-          ContaHub
-        </span>
-        <button
-          onClick={onClose}
-          className="p-1 text-slate-500 hover:text-slate-300 lg:hidden"
-          aria-label="Fechar menu"
-        >
+        <span className="text-[15px] font-bold text-slate-50 tracking-tight flex-1">ContaHub</span>
+        <button onClick={onClose} className="p-1 text-slate-500 hover:text-slate-300 lg:hidden" aria-label="Fechar menu">
           <X size={18} />
         </button>
       </div>
 
       {/* Navegação */}
       <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.8px] px-2 pt-2 pb-1">
-          Principal
-        </p>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.8px] px-2 pt-2 pb-1">Principal</p>
         {NAV_MAIN.map((item) => (
           <NavItem key={item.href} {...item} active={isActive(item.href)} onClick={onClose} />
         ))}
 
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.8px] px-2 pt-4 pb-1">
-          Comunicação
-        </p>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.8px] px-2 pt-4 pb-1">Comunicação</p>
         {NAV_COMMS.map((item) => (
           <NavItem key={item.href} {...item} active={isActive(item.href)} onClick={onClose} />
         ))}
 
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.8px] px-2 pt-4 pb-1">
-          Sistema
-        </p>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.8px] px-2 pt-4 pb-1">Sistema</p>
         {NAV_SYSTEM.map((item) => (
           <NavItem key={item.href} {...item} active={isActive(item.href)} onClick={onClose} />
         ))}
@@ -149,9 +141,7 @@ export function Sidebar({
         <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors">
           <UserButton afterSignOutUrl="/" />
           <div className="min-w-0">
-            <p className="text-[13px] text-slate-300 font-medium truncate leading-tight">
-              Minha conta
-            </p>
+            <p className="text-[13px] text-slate-300 font-medium truncate leading-tight">Minha conta</p>
             <p className="text-[11px] text-slate-500 truncate">Configurar perfil</p>
           </div>
         </div>
@@ -161,21 +151,11 @@ export function Sidebar({
 
   return (
     <>
-      {/* Desktop — sempre visível */}
-      <aside className="hidden lg:flex flex-col h-full w-56 flex-shrink-0">
-        {content}
-      </aside>
-
-      {/* Mobile — drawer com overlay */}
+      <aside className="hidden lg:flex flex-col h-full w-56 flex-shrink-0">{content}</aside>
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <aside className="absolute left-0 top-0 bottom-0 w-56 flex flex-col shadow-2xl">
-            {content}
-          </aside>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+          <aside className="absolute left-0 top-0 bottom-0 w-56 flex flex-col shadow-2xl">{content}</aside>
         </div>
       )}
     </>

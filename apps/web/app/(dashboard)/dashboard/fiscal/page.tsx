@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { getObligations, completeObligation } from "@/lib/fiscal";
+import { getObligations, completeObligation, updateObligation, deleteObligation } from "@/lib/fiscal";
 import { ObligationModal } from "@/components/fiscal/ObligationModal";
+import { getClientDisplayName } from "@contahub/shared";
 
 // ─── Tipos ───────────────────────────────────────────────────
 interface FiscalObligation {
@@ -53,7 +54,7 @@ function formatCompetence(comp: string) {
 
 function formatCurrency(value?: number) {
   if (value == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value / 100);
 }
 
 /**
@@ -141,12 +142,14 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: "Concluída",
   OVERDUE:   "Vencida",
   CANCELED:  "Cancelada",
+  IN_PROGRESS: "Comprovante enviado",
 };
 const STATUS_CLASSES: Record<string, string> = {
   PENDING:   "bg-yellow-100 text-yellow-800",
   COMPLETED: "bg-green-100 text-green-800",
   OVERDUE:   "bg-red-100 text-red-800",
   CANCELED:  "bg-gray-100 text-gray-600",
+  IN_PROGRESS: "bg-blue-100 text-blue-800",
 };
 
 // ─── Página ───────────────────────────────────────────────────
@@ -164,6 +167,8 @@ export default function FiscalPage() {
   const [completing, setCompleting]   = useState<string | null>(null);
   const [errorMsg, setErrorMsg]       = useState<string | null>(null);
   const [successMsg, setSuccessMsg]   = useState<string | null>(null);
+  const [obligationToDelete, setObligationToDelete] = useState<FiscalObligation | null>(null);
+  const [obligationToEdit, setObligationToEdit]     = useState<FiscalObligation | null>(null);
 
   const monthParam = selectedMonth
     ? `${selectedMonth.year}-${String(selectedMonth.month).padStart(2, "0")}`
@@ -187,7 +192,7 @@ export default function FiscalPage() {
       setAllClients((prev) => {
         const merged = new Map(prev.map((c) => [c.id, c.name]));
         list.forEach((o) => {
-          if (o.client?.name) merged.set(o.clientId, o.client.name);
+          if (o.client) merged.set(o.clientId, getClientDisplayName(o.client));
         });
         return Array.from(merged.entries()).map(([id, name]) => ({ id, name }));
       });
@@ -215,6 +220,26 @@ export default function FiscalPage() {
     }
     return true;
   });
+
+async function handleDelete(o: FiscalObligation) {
+  setObligationToDelete(o);
+}
+
+async function confirmDelete() {
+  if (!obligationToDelete) return;
+  try {
+    const token = await getToken();
+    await deleteObligation(obligationToDelete.id, token);
+    setSuccessMsg("Obrigação removida.");
+    setTimeout(() => setSuccessMsg(null), 4000);
+    setObligationToDelete(null);
+    await loadObligations();
+  } catch (err: any) {
+    setErrorMsg(err?.message ?? "Erro ao remover obrigação.");
+    setTimeout(() => setErrorMsg(null), 5000);
+    setObligationToDelete(null);
+  }
+}  
 
 async function handleComplete(id: string) {
   setCompleting(id);
@@ -356,18 +381,18 @@ async function handleComplete(id: string) {
                       ) : (
                         <button onClick={() => setShowModal(true)} className="text-blue-600 hover:underline">
                           crie uma nova obrigação
-                        </button>
-                      )}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
+                          </button>
+                        )}
+                     </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
               filtered.map((o) => (
                 <tr key={o.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{o.type}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {o.client?.name ?? "—"}
+                    {o.client ? getClientDisplayName(o.client) : "—"}
                     {o.client?.cnpj && <span className="block text-xs text-gray-400">{o.client.cnpj}</span>}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{formatCompetence(o.competence)}</td>
@@ -379,27 +404,67 @@ async function handleComplete(id: string) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {(o.status === "PENDING" || o.status === "OVERDUE") && (
-                      <button
-                        onClick={() => handleComplete(o.id)}
-                        disabled={completing === o.id}
-                        className="text-xs text-green-700 hover:text-green-900 font-medium border border-green-300 hover:border-green-500 px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {completing === o.id ? "..." : "✓ Concluir"}
-                      </button>
-                    )}
+                    <div className="flex gap-1.5 justify-end">
+                      {(o.status === "PENDING" ||
+                        o.status === "OVERDUE" ||
+                        o.status === "IN_PROGRESS") && (
+                        <>
+                          <button
+                            onClick={() => handleComplete(o.id)}
+                            disabled={completing === o.id}
+                            className="text-xs text-green-700 hover:text-green-900 font-medium border border-green-300 hover:border-green-500 px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {completing === o.id ? "..." : "✓ Concluir"}
+                          </button>
+
+                          <button
+                            onClick={() => setObligationToEdit(o)}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium border border-blue-200 hover:border-blue-400 px-3 py-1 rounded-lg transition-colors"
+                          >
+                            ✏️
+                          </button>
+
+                          <button
+                            onClick={() => handleDelete(o)}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 hover:border-red-400 px-3 py-1 rounded-lg transition-colors"
+                          >
+                            🗑
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ))
+              )
+            )
             )}
           </tbody>
         </table>
       </div>
-
-      {showModal && (
+      {obligationToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-2">Remover obrigação</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Deseja remover <span className="font-medium text-gray-700">{obligationToDelete.type}</span> de{" "}
+              <span className="font-medium text-gray-700">{obligationToDelete.client ? getClientDisplayName(obligationToDelete.client) : "—"}</span>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setObligationToDelete(null)} className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                Cancelar
+              </button>
+              <button onClick={confirmDelete} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {(showModal || obligationToEdit) && (
         <ObligationModal
-          onClose={() => setShowModal(false)}
-          onSuccess={() => { setShowModal(false); loadObligations(); }}
+          obligation={obligationToEdit ?? undefined}
+          onClose={() => { setShowModal(false); setObligationToEdit(null); }}
+          onSuccess={() => { setShowModal(false); setObligationToEdit(null); loadObligations(); }}
         />
       )}
     </div>

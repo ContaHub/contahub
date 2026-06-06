@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Upload, Download, Trash2, FileText, Image, FileSpreadsheet, File, FileCode, Eye } from "lucide-react";
+import { Upload, Download, Trash2, FileText, Image, FileSpreadsheet, File, FileCode, Eye, FileInput } from "lucide-react";
 import {
   Card, Badge, Button, IconButton,
   FilterBar, SearchInput, SelectFilter,
@@ -9,9 +9,10 @@ import {
 } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { UploadModal } from "@/components/documents/UploadModal";
-import { getDocuments, getDownloadUrl, deleteDocument } from "@/lib/documents";
+import { getDocuments, getDownloadUrl, deleteDocument, sendForReview  } from "@/lib/documents";
 import { uploadNfeXml, formatValorNfe, NfeDocument } from "@/lib/nfe";
 import { useAuth } from "@clerk/nextjs";
+import { getClientDisplayName } from "@contahub/shared";
 
 function formatBytes(bytes: number) {
   if (!bytes) return "—";
@@ -57,11 +58,13 @@ function DocTypeIcon({ name }: { name: string }) {
   );
 }
 
-function statusBadge(s: string) {
+function statusBadge(s: string, createdBy?: string) {
+  const byClient = createdBy?.startsWith("client:");
+  if ((s === "UPLOADED" || s === "SENT") && byClient) return <Badge variant="purple">Enviado pelo cliente</Badge>;
   if (s === "UPLOADED" || s === "SENT") return <Badge variant="info">Enviado</Badge>;
   if (s === "UNDER_REVIEW") return <Badge variant="review">Em revisão</Badge>;
   if (s === "APPROVED") return <Badge variant="success">Aprovado</Badge>;
-  if (s === "REVISION_REQUESTED") return <Badge variant="warning">Revisão</Badge>;
+  if (s === "REVISION_REQUESTED") return <Badge variant="warning">📝 Revisão solicitada</Badge>;
   return <Badge variant="gray">{s}</Badge>;
 }
 
@@ -211,7 +214,7 @@ function NfeRow({ nfe, onView, onDelete }: {
   onDelete: (nfe: NfeDocument) => void;
 }) {
   return (
-    <div className="group grid grid-cols-[2fr_1.4fr_0.8fr_0.9fr_0.9fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+    <div className="group grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
           <FileCode size={15} className="text-blue-600" />
@@ -292,6 +295,18 @@ export default function DocumentsPage() {
     if (r.data?.url) window.open(r.data.url, "_blank");
   }
 
+  async function handleSendReview(id: string) {
+  try {
+    const { sendForReview } = await import("@/lib/documents");
+    await sendForReview(id);
+    setSuccessMsg("Documento enviado para revisão do cliente.");
+    setTimeout(() => setSuccessMsg(null), 4000);
+    loadDocs();
+  } catch (err: any) {
+    console.error("Erro ao enviar para revisão:", err);
+  }
+}
+
   async function confirmDeleteDoc() {
     if (!docToDelete) return;
     try {
@@ -362,6 +377,15 @@ async function confirmDeleteNfe() {
           </div>
         )}
 
+        {docs.some(d => d.status === "REVISION_REQUESTED") && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-2">
+            <span className="text-amber-600">📝</span>
+            <p className="text-[13px] text-amber-700 font-medium">
+              {docs.filter(d => d.status === "REVISION_REQUESTED").length} documento(s) com revisão solicitada pelo cliente.
+            </p>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-slate-100 rounded-lg p-1 w-fit">
           <button
@@ -390,8 +414,8 @@ async function confirmDeleteNfe() {
         {activeTab === 'docs' && (
           <Card>
             <div className="hidden md:block">
-              <div className="grid grid-cols-[2fr_1.4fr_0.8fr_0.9fr_0.9fr_72px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-                {["Documento","Cliente","Tamanho","Status","Data",""].map((h) => (
+              <div className="grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_72px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                {["Documento","Cliente","Status","Data",""].map((h) => (
                   <span key={h} className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]">{h}</span>
                 ))}
               </div>
@@ -412,7 +436,7 @@ async function confirmDeleteNfe() {
               {filtered.map((d) => (
                 <div
                   key={d.id}
-                  className="group grid grid-cols-[2fr_1.4fr_0.8fr_0.9fr_0.9fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                  className="group grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <DocTypeIcon name={d.name} />
@@ -423,12 +447,22 @@ async function confirmDeleteNfe() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-[13px] text-slate-500 truncate">{d.client?.name || d.clientId || "—"}</span>
-                  <span className="text-[13px] text-slate-500">{formatBytes(d.size)}</span>
-                  <span>{statusBadge(d.status)}</span>
+                  <span className="text-[13px] text-slate-500 truncate">{d.client ? getClientDisplayName(d.client) : d.clientId || "—"}</span>
+                  {/*<span className="text-[13px] text-slate-500">{formatBytes(d.size)}</span>*/}
+                  <span>
+                    {statusBadge(d.status, d.createdBy)}
+                    {d.status === "REVISION_REQUESTED" && d.reviewNotes && (
+                      <p className="text-xs text-amber-600 mt-1 max-w-[200px] truncate" title={d.reviewNotes}>
+                        💬 {d.reviewNotes}
+                      </p>
+                    )}
+                  </span>
                   <span className="text-[13px] text-slate-500">{fmtDate(d.createdAt)}</span>
                   <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <IconButton icon={Download} label="Baixar" onClick={() => handleDownload(d.id)} />
+                    <IconButton icon={Eye} label="Visualizar" onClick={() => handleDownload(d.id)} />
+                    {(d.status === "UPLOADED" || d.status === "SENT") && (
+                      <IconButton icon={FileInput} label="Enviar para revisão" onClick={() => handleSendReview(d.id)} />
+                    )}
                     <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setDocToDelete(d)} />
                   </div>
                 </div>
@@ -444,7 +478,7 @@ async function confirmDeleteNfe() {
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-semibold text-slate-900 truncate">{d.name}</p>
                     <p className="text-[12px] text-slate-500 truncate">
-                      {d.client?.name || "—"} · {formatBytes(d.size)}
+                      {d.client ? getClientDisplayName(d.client) : "—"} · {formatBytes(d.size)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -461,7 +495,7 @@ async function confirmDeleteNfe() {
         {activeTab === 'nfe' && (
           <Card>
             <div className="hidden md:block">
-              <div className="grid grid-cols-[2fr_1.4fr_0.8fr_0.9fr_0.9fr_72px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+              <div className="grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_72px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
                 {["Nota Fiscal","Cliente / Destinatário","Valor","Status","Emissão",""].map((h) => (
                   <span key={h} className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]">{h}</span>
                 ))}

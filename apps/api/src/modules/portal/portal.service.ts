@@ -135,12 +135,72 @@ export class PortalService {
     });
     return { data: obligations };
   }
+
+  async submitComprovante(
+  workspaceSlug: string,
+  obligationId: string,
+  clientId: string,
+  file: Express.Multer.File,
+  currentUserEmail: string,
+) {
+  this.logger.log(`[submitComprovante] slug=${workspaceSlug} obligationId=${obligationId} clientId=${clientId}`);
+
+  await this.validateClientAccess(workspaceSlug, clientId, currentUserEmail);
+
+  const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
+  if (!workspace) throw new NotFoundException("Escritório não encontrado");
+
+  const obligation = await prisma.fiscalObligation.findFirst({
+    where: { id: obligationId, workspaceId: workspace.id, clientId },
+    include: { client: { select: { name: true } } },
+  });
+  if (!obligation) throw new NotFoundException("Obrigação não encontrada");
+  if (obligation.status === "COMPLETED") throw new BadRequestException("Obrigação já concluída");
+
+  validateFileType(file);
+  if (file.size > 10 * 1024 * 1024) throw new BadRequestException("Arquivo muito grande. Máximo: 10MB");
+
+  const timestamp = Date.now();
+  const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storageKey = `${workspace.id}/${clientId}/comprovantes/${timestamp}-${safeName}`;
+
+  const uploaded = await this.supabase.upload(storageKey, file.buffer, file.mimetype);
+  if (!uploaded) throw new BadRequestException("Erro ao fazer upload do comprovante");
+
+  // Salva o documento vinculado à obrigação
+  await prisma.document.create({
+    data: {
+      workspaceId: workspace.id,
+      clientId,
+      name: file.originalname,
+      description: `[Comprovante] ${obligation.type} — ${obligation.competenceMonth}/${obligation.competenceYear}`,
+      status: "UPLOADED",
+      storageKey,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+      createdBy: `client:${clientId}`,
+    },
+  });
+
+  // Muda status da obrigação para IN_PROGRESS
+  await prisma.fiscalObligation.update({
+    where: { id: obligationId },
+    data: { status: "IN_PROGRESS" },
+  });
+
+  this.logger.log(
+    `📤 Comprovante enviado — ${obligation.type} ${obligation.competenceMonth}/${obligation.competenceYear} | Cliente: ${obligation.client.name} | Por: ${currentUserEmail}`,
+  );
+
+  return { message: "Comprovante enviado! O escritório irá confirmar o pagamento." };
+}
  
   async clientUpload(
     workspaceSlug: string,
     clientId: string,
     file: Express.Multer.File,
-    description?: string
+    description?: string,
+    currentUserEmail?: string,
   ) {
     this.logger.log(`[clientUpload] slug=${workspaceSlug} clientId=${clientId} file=${file?.originalname} size=${file?.size}`);
  
@@ -185,6 +245,9 @@ export class PortalService {
     });
  
     this.logger.log(`[clientUpload] Documento salvo no banco: ${document.id}`);
+    this.logger.log(
+      `📎 Portal — Upload — "${file.originalname}" (${(file.size / 1024).toFixed(1)} KB) | Cliente: ${client.name} | Por: ${currentUserEmail ?? "cliente"}`,
+    );
  
     await prisma.communication.create({
       data: {
@@ -202,7 +265,7 @@ export class PortalService {
   }
  
   async deleteClientDocument(workspaceSlug: string, documentId: string, currentUserEmail: string) {
-    this.logger.log(`[deleteClientDocument] slug=${workspaceSlug} documentId=${documentId}`);
+    // log detalhado após buscar o doc (mais abaixo, após o findFirst)
     const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
     if (!workspace) throw new NotFoundException("Escritório não encontrado");
  
@@ -215,6 +278,10 @@ export class PortalService {
     });
  
     if (!doc) throw new NotFoundException("Documento não encontrado ou sem permissão para remover");
+    // Adicionar aqui:
+    this.logger.warn(
+      `🗑 Portal — Removido — "${doc.name}" | Cliente: ${doc.clientId} | Por: ${currentUserEmail}`,
+    );
  
     // [FIX-02] Valida que o cliente é proprietário deste documento
     await this.validateClientAccess(workspaceSlug, doc.clientId, currentUserEmail);
@@ -231,7 +298,7 @@ export class PortalService {
     workspaceSlug: string,
     documentId: string,
     clientId: string,
-    action: "APPROVED" | "REJECTED",
+    action: "APPROVED" | "REVISION_REQUESTED",
     currentUserEmail: string,
     notes?: string
   ) {
@@ -249,6 +316,10 @@ export class PortalService {
     });
  
     if (!document) throw new NotFoundException("Relatório não encontrado ou já revisado");
+    const actionLabel = action === "APPROVED" ? "✅ Aprovado" : "📝 Revisão solicitada";
+    this.logger.log(
+      `${actionLabel} — "${document.name}" | Cliente: ${document.client.name} | Por: ${currentUserEmail}${notes ? ` | Motivo: ${notes}` : ""}`,
+    );
  
     const updated = await prisma.document.update({
       where: { id: documentId },

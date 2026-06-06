@@ -7,21 +7,21 @@
         <cNF>12345678</cNF>
         <natOp>Venda de mercadorias</natOp>
         <mod>55</mod>
-        <serie>1</serie>
-        <nNF>1</nNF>
+        <serie>2</serie>
+        <nNF>2</nNF>
         <dhEmi>2026-05-29T10:00:00-03:00</dhEmi>
-        <tpNF>1</tpNF>
-        <idDest>1</idDest>
+        <tpNF>2</tpNF>
+        <idDest>2</idDest>
         <cMunFG>3550308</cMunFG>
-        <tpImp>1</tpImp>
-        <tpEmis>1</tpEmis>
+        <tpImp>2</tpImp>
+        <tpEmis>2</tpEmis>
         <cDV>0</cDV>
         <tpAmb>2</tpAmb>
-        <finNFe>1</finNFe>
-        <indFinal>1</indFinal>
-        <indPres>1</indPres>
+        <finNFe>2</finNFe>
+        <indFinal>2</indFinal>
+        <indPres>2</indPres>
         <procEmi>0</procEmi>
-        <verProc>1.0</verProc>
+        <verProc>2.0</verProc>
       </ide>
       <emit>
         <CNPJ>11.222.333/0001-44</CNPJ>
@@ -42,8 +42,8 @@
         <CRT>1</CRT>
       </emit>
       <dest>
-        <CNPJ>22.333.444/0001-55</CNPJ>
-        <xNome>Tech Solutions ME</xNome>
+        <CNPJ>52.196.926/0001-06</CNPJ>
+        <xNome>BENCERT DIGITAL</xNome>
         <enderDest>
           <xLgr>Av. Paulista</xLgr>
           <nro>1000</nro>

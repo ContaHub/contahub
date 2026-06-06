@@ -10,7 +10,7 @@ export interface DashboardStats {
     type: string;
     dueDate: string;
     status: string;
-    client: { id: string; name: string };
+    client: { id: string; tradeName: string };
   }>;
 }
 

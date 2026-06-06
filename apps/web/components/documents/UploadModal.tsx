@@ -131,7 +131,7 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
               >
                 <option value="">Selecione um cliente</option>
                 {clients.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>{c.tradeName}</option>
                 ))}
               </select>
             </div>

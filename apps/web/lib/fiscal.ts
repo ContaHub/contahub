@@ -85,6 +85,24 @@ export async function completeObligation(
   return res.json();
 }
 
+// ─── Atualizar obrigação ────────────────────────────────────────
+export async function updateObligation(
+  id: string,
+  data: Record<string, unknown>,
+  token: string | null
+) {
+  const res = await fetch(`${API_URL}/api/v1/fiscal/obligations/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: "Erro ao atualizar obrigação" }));
+    throw new Error(err.message ?? "Erro ao atualizar obrigação");
+  }
+  return res.json();
+}
+
 // ─── Deletar obrigação ────────────────────────────────────────
 export async function deleteObligation(
   id: string,

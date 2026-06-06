@@ -14,7 +14,7 @@ export interface NfeDocument {
   valorIcms?:       number | null;
   valorIss?:        number | null;
   naturezaOperacao: string;
-  client?:          { id: string; name: string } | null;
+  client?:          { id: string; name: string; tradeName: string } | null;
 }
 
 export async function uploadNfeXml(

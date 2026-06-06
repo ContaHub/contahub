@@ -57,7 +57,7 @@ export class DashboardService {
           dueDate: { gte: now },
         },
         include: {
-          client: { select: { id: true, name: true } },
+          client: { select: { id: true, name: true, tradeName: true } },
         },
         orderBy: { dueDate: "asc" },
         take: 5,

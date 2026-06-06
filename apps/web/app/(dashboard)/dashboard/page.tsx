@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/ui";
 import { useAuth } from "@clerk/nextjs";
 import { getDashboardStats } from "@/lib/dashboard";
 import { getObligations } from "@/lib/fiscal";
+import { getClientDisplayName } from "@contahub/shared";
 
 // Formatador de data pt-BR
 function fmtDate(date: string) {
@@ -158,7 +159,7 @@ export default function DashboardPage() {
                       {obl.type}
                     </p>
                     <p className="text-[11px] text-slate-400 sm:hidden truncate">
-                      {obl.client?.name} · {obl.competenceMonth.toString().padStart(2, "0")}/{obl.competenceYear}
+                      {obl.client ? getClientDisplayName(obl.client) : "—"} · {obl.competenceMonth.toString().padStart(2, "0")}/{obl.competenceYear}
                     </p>
                   </div>
                 </div>
@@ -167,7 +168,7 @@ export default function DashboardPage() {
                 <div className="hidden sm:block flex-1 min-w-0">
                   <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold mb-0.5">Cliente</span>
                   <p className="text-[13px] font-semibold text-slate-700 truncate">
-                    {obl.client?.name || "—"}
+                    {obl.client ? getClientDisplayName(obl.client) : "—"}
                   </p>
                 </div>
 

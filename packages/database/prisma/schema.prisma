@@ -70,7 +70,7 @@ enum DocumentStatus {
   UPLOADED
   UNDER_REVIEW
   APPROVED
-  REJECTED
+  REVISION_REQUESTED
 }
 
 enum CommunicationChannel {

@@ -13,7 +13,7 @@ export interface Document {
 }
 
 export async function getDocuments(clientId?: string): Promise<{ data: Document[] }> {
-  const query = clientId ? `?clientId=${clientId}` : "";
+    const query = clientId ? `?clientId=${clientId}&t=${Date.now()}` : `?t=${Date.now()}`;
   return apiFetch(`/documents${query}`);
 }
 

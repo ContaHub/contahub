@@ -12,7 +12,7 @@ const STATUS_LABELS: Record<string, { label: string; class: string }> = {
   UPLOADED: { label: "Disponível", class: "bg-blue-100 text-blue-700" },
   APPROVED: { label: "Aprovado", class: "bg-green-100 text-green-700" },
   UNDER_REVIEW: { label: "Em revisão", class: "bg-yellow-100 text-yellow-700" },
-  REJECTED: { label: "Revisão solicitada", class: "bg-red-100 text-red-700" },
+  Rejeitado: { label: "Revisão solicitada", class: "bg-red-100 text-red-700" },
 };
 
 export default function ClientDocumentsPage() {
@@ -25,6 +25,8 @@ export default function ClientDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [docToDelete, setDocToDelete] = useState<PortalDocument | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [clientId, setClientId] = useState("");
 
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -72,35 +74,38 @@ export default function ClientDocumentsPage() {
       const url = await getPortalClientDownloadUrl(slug, doc.id, token);
       window.open(url, "_blank");
     } catch {
-      alert("Erro ao baixar documento");
+      setDeleteError("Erro ao baixar documento. Tente novamente.");
     } finally {
       setDownloading(null);
     }
   }
 
   async function handleDelete(doc: PortalDocument) {
-    // Só permite remover documentos enviados pelo próprio cliente
     const isByClient = doc.description?.startsWith("[Cliente]") || doc.description === "[Enviado pelo cliente]";
     if (!isByClient) {
-      alert("Você não pode remover documentos enviados pelo escritório.");
+      setDeleteError("Você não pode remover documentos enviados pelo escritório.");
       return;
     }
+    setDocToDelete(doc);
+  }
 
-    if (!confirm(`Tem certeza que deseja remover "${doc.name}"?`)) return;
-
-    setDeleting(doc.id);
+  async function confirmDelete() {
+    if (!docToDelete) return;
+    setDeleting(docToDelete.id);
+    setDeleteError("");
     try {
       const token = await getToken();
       if (!token) return;
-
-      const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${doc.id}`, {
+      const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${docToDelete.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Erro ao remover documento");
+      setDocToDelete(null);
       await loadDocuments(clientId, token);
     } catch {
-      alert("Erro ao remover documento");
+      setDeleteError("Erro ao remover documento. Tente novamente.");
+      setDocToDelete(null);
     } finally {
       setDeleting(null);
     }
@@ -144,8 +149,43 @@ export default function ClientDocumentsPage() {
     }
   }
 
+  // Modal de confirmação de exclusão
+  const ConfirmDeleteModal = docToDelete ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <h3 className="text-base font-semibold text-gray-900 mb-2">Remover documento</h3>
+        <p className="text-sm text-gray-500 mb-6">
+          Tem certeza que deseja remover <span className="font-medium text-gray-700">&quot;{docToDelete.name}&quot;</span>? Esta ação não pode ser desfeita.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setDocToDelete(null)}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmDelete}
+            disabled={!!deleting}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
+          >
+            {deleting ? "Removendo..." : "Remover"}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-6">
+      {ConfirmDeleteModal}
+
+      {deleteError && (
+        <div className="flex items-center justify-between bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+          <span>❌ {deleteError}</span>
+          <button onClick={() => setDeleteError("")} className="text-red-400 hover:text-red-600 ml-4">✕</button>
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Meus Documentos</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -229,7 +269,7 @@ export default function ClientDocumentsPage() {
                 <div key={doc.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 group transition-colors">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">
-                      {doc.mimeType?.includes("pdf") ? "📕" : doc.mimeType?.startsWith("image") ? "🖼️" : "📄"}
+                      {doc.mimeType?.includes("pdf") ? "📕" : doc.mimeType?.startsWith("image") ? "🏙️" : "📄"}
                     </span>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -256,7 +296,7 @@ export default function ClientDocumentsPage() {
                       disabled={downloading === doc.id}
                       className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
                     >
-                      {downloading === doc.id ? "..." : "⬇ Baixar"}
+                      {downloading === doc.id ? "..." : "Visualizar"}
                     </button>
                     {/* Botão remover — só aparece para docs enviados pelo cliente */}
                     {isByClient && (

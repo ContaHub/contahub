@@ -145,7 +145,7 @@ export class CnpjService {
         status: 'ACTIVE',
         cnpj:   { not: '' },
       },
-      select: { id: true, cnpj: true, name: true },
+      select: { id: true, cnpj: true, tradeName: true },
     });
 
     this.logger.log(
@@ -169,12 +169,12 @@ export class CnpjService {
         if (result.hasAlert) {
           alertas++;
           this.logger.warn(
-            `⚠️  ${client.name} — CNPJ ${result.cnpj} com status: ${result.status}`,
+            `⚠️  ${client.tradeName} — CNPJ ${result.cnpj} com status: ${result.status}`,
           );
         }
       } catch (err) {
         erros++;
-        this.logger.error(`Erro ao consultar ${client.name}: ${err.message}`);
+        this.logger.error(`Erro ao consultar ${client.tradeName}: ${err.message}`);
       }
     }
 

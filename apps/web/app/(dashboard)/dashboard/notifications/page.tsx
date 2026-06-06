@@ -67,7 +67,7 @@ export default function NotificationsPage() {
 
           {/* WhatsApp status */}
           <Card className="p-5">
-            <h2 className="text-[14px] font-bold text-slate-900 mb-4">WhatsApp — WAHA</h2>
+            <h2 className="text-[14px] font-bold text-slate-900 mb-4">WhatsApp</h2>
             <div className="flex items-center gap-2.5 mb-1.5">
               {waStatus === "loading" ? (
                 <div className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />
@@ -86,7 +86,7 @@ export default function NotificationsPage() {
                 </span>
               )}
             </div>
-            <p className="text-[12px] text-slate-500 mb-4">Sessão WAHA {waStatus === "connected" ? "ativa" : "inativa"}</p>
+            <p className="text-[12px] text-slate-500 mb-4">Sessão {waStatus === "connected" ? "ativa" : "inativa"}</p>
             {waStatus !== "connected" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[12px] text-blue-700 flex gap-2">
                 <Bell size={14} className="flex-shrink-0 mt-0.5" />
@@ -98,7 +98,7 @@ export default function NotificationsPage() {
                     rel="noopener noreferrer"
                     className="underline font-semibold"
                   >
-                    localhost:3000/dashboard
+                    Área de configuração
                   </a>{" "}
                   e verifique se a sessão está ativa.
                 </span>

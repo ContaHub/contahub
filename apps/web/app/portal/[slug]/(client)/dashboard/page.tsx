@@ -118,7 +118,8 @@ export default function ClientDashboardPage() {
             {documents.map((doc) => (
               <div key={doc.id} className="flex items-center justify-between px-6 py-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{doc.mimeType?.includes("pdf") ? "📕" : "📄"}</span>
+                  {/*<span className="text-lg">{doc.mimeType?.includes("pdf") ? "📕" : "📄"}</span> --> Removi para deixar sem ícones*/}
+                  <span className="text-lg">{doc.mimeType?.includes("pdf") ? "" : ""}</span>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{doc.name}</p>
                     {doc.description && <p className="text-xs text-gray-400">{doc.description}</p>}
