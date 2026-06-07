@@ -809,7 +809,17 @@ async function confirmDeleteNfe() {
                       </div>
                     {docDetail.reviewNotes && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex-shrink-0">
-                        <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">💬 Nota de revisão do cliente</p>
+                      <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">
+                        💬 Nota de revisão do cliente
+                        {(docDetail as any).reviewedAt && (
+                          <span className="ml-2 font-normal normal-case text-amber-400">
+                            · {new Date((docDetail as any).reviewedAt).toLocaleString("pt-BR", {
+                              day: "2-digit", month: "2-digit", year: "numeric",
+                              hour: "2-digit", minute: "2-digit"
+                            })}
+                          </span>
+                        )}
+                      </p>
                         <p className="text-[13px] text-amber-800 whitespace-pre-wrap break-words leading-relaxed max-h-[20vh] overflow-y-auto">{docDetail.reviewNotes}</p>
                       </div>
                     )}
@@ -823,7 +833,17 @@ async function confirmDeleteNfe() {
                     <PdfPreview doc={docDetail} />
                     {docDetail.reviewNotes && (
                       <div className="mx-4 mb-2 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                        <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">💬 Nota de revisão do cliente</p>
+                        <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">
+                          💬 Nota de revisão do cliente
+                          {(docDetail as any).reviewedAt && (
+                            <span className="ml-2 font-normal normal-case text-amber-400">
+                              · {new Date((docDetail as any).reviewedAt).toLocaleString("pt-BR", {
+                                day: "2-digit", month: "2-digit", year: "numeric",
+                                hour: "2-digit", minute: "2-digit"
+                              })}
+                            </span>
+                          )}
+                        </p>
                         <p className="text-[13px] text-amber-800 whitespace-pre-wrap break-words leading-relaxed">{docDetail.reviewNotes}</p>
                       </div>
                     )}
@@ -833,7 +853,17 @@ async function confirmDeleteNfe() {
                 return (
                   <div className="w-full p-4">
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                      <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">💬 Nota de revisão do cliente</p>
+                      <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">
+                        💬 Nota de revisão do cliente
+                        {(docDetail as any).reviewedAt && (
+                          <span className="ml-2 font-normal normal-case text-amber-400">
+                            · {new Date((docDetail as any).reviewedAt).toLocaleString("pt-BR", {
+                              day: "2-digit", month: "2-digit", year: "numeric",
+                              hour: "2-digit", minute: "2-digit"
+                            })}
+                          </span>
+                        )}
+                      </p>
                       <p className="text-[13px] text-amber-800 whitespace-pre-wrap break-words leading-relaxed">{docDetail.reviewNotes}</p>
                     </div>
                   </div>
