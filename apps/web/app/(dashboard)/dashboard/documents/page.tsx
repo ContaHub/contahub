@@ -214,7 +214,7 @@ function NfeRow({ nfe, onView, onDelete }: {
   onDelete: (nfe: NfeDocument) => void;
 }) {
   return (
-    <div className="group grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+    <div className="group grid grid-cols-[1.4fr_1.4fr_0.9fr_0.9fr_0.8fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
           <FileCode size={15} className="text-blue-600" />
@@ -254,6 +254,133 @@ function NfeRow({ nfe, onView, onDelete }: {
   );
 }
 
+// ── Modal para visualizar ───────────────────────────────────────────────────────
+function ImagePreview({ doc }: { doc: any }) {
+  const { getToken } = useAuth();
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    getDownloadUrl(doc.id).then((r) => {
+      if (r.data?.url) setUrl(r.data.url);
+    });
+  }, [doc.id]);
+
+  if (!url) return (
+    <div className="flex flex-col items-center gap-2 text-slate-400">
+      <div className="w-8 h-8 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+      <p className="text-[12px]">Carregando preview...</p>
+    </div>
+  );
+
+  return (
+    <img
+      src={url}
+      alt={doc.name}
+      className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-sm"
+    />
+  );
+}
+
+function PdfPreview({ doc }: { doc: any }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    getDownloadUrl(doc.id).then((r) => {
+      if (r.data?.url) setUrl(r.data.url);
+    });
+  }, [doc.id]);
+
+  if (!url) return (
+    <div className="flex flex-col items-center gap-2 text-slate-400 py-8">
+      <div className="w-8 h-8 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+      <p className="text-[12px]">Carregando PDF...</p>
+    </div>
+  );
+
+  return (
+    <iframe
+      src={url}
+      className="w-full rounded-lg"
+      style={{ height: "55vh", border: "none" }}
+      title={doc.name}
+    />
+  );
+}
+
+function formatXml(xml: string): string {
+  let formatted = "";
+  let indent = 0;
+  const tab = "  ";
+  xml.replace(/>\s*</g, ">\n<").split("\n").forEach((node) => {
+    const trimmed = node.trim();
+    if (!trimmed) return;
+    if (trimmed.startsWith("</")) indent--;
+    formatted += tab.repeat(Math.max(0, indent)) + trimmed + "\n";
+    if (!trimmed.startsWith("</") && !trimmed.endsWith("/>") && trimmed.includes("<") && !trimmed.includes("</"))
+      indent++;
+  });
+  // Escapa para HTML seguro
+  return formatted
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// ── Viewer XML ───────────────────────────────────────────────────────
+function XmlPreview({ doc }: { doc: any }) {
+  const [content, setContent] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    getDownloadUrl(doc.id).then(async (r) => {
+      if (!r.data?.url) { setError(true); return; }
+      try {
+        const res = await fetch(r.data.url);
+        const text = await res.text();
+        // Formata o XML com indentação
+        const formatted = formatXml(text);
+        setContent(formatted);
+      } catch { setError(true); }
+    });
+  }, [doc.id]);
+
+  if (error) return (
+    <div className="text-center text-slate-400 py-8">
+      <FileCode size={32} className="mx-auto mb-2 text-slate-300" />
+      <p className="text-[13px]">Não foi possível carregar o arquivo.</p>
+    </div>
+  );
+
+  if (!content) return (
+    <div className="flex flex-col items-center gap-2 text-slate-400 py-8">
+      <div className="w-8 h-8 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+      <p className="text-[12px]">Carregando XML...</p>
+    </div>
+  );
+
+  return (
+    <pre className="text-[11px] text-left font-mono text-slate-700 whitespace-pre overflow-auto w-full max-h-[55vh] leading-relaxed">
+      {content.split("\n").map((line, i) => {
+        const trimmed = line.trimStart();
+        const indent = line.length - trimmed.length;
+        // Colorização simples sem dependência externa
+        const colored = trimmed
+          .replace(/(&lt;\/?)([\w:-]+)/g, (_, slash, tag) =>
+            `<span style="color:#2563eb">${slash}${tag}</span>`)
+          .replace(/\s([\w:-]+=)(".*?")/g, (_, attr, val) =>
+            ` <span style="color:#7c3aed">${attr}</span><span style="color:#059669">${val}</span>`)
+          .replace(/(&gt;)([^<]+)(&lt;)/g, (_, o, text, c) =>
+            `${o}<span style="color:#374151">${text}</span>${c}`);
+        return (
+          <div key={i} dangerouslySetInnerHTML={{
+            __html: `<span style="color:#94a3b8;user-select:none;margin-right:12px">${String(i + 1).padStart(3, ' ')}</span>${' '.repeat(indent)}${colored}`
+          }} />
+        );
+      })}
+    </pre>
+  );
+}
+
 // ── Página principal ───────────────────────────────────────────────────────
 export default function DocumentsPage() {
   const openMenu        = useMobileMenu();
@@ -268,6 +395,9 @@ export default function DocumentsPage() {
   const [nfeDetail, setNfeDetail]     = useState<NfeDocument | null>(null);
   const [nfeToDelete, setNfeToDelete] = useState<NfeDocument | null>(null);
   const [docToDelete, setDocToDelete] = useState<any | null>(null);
+  const [docDetail, setDocDetail] = useState<any | null>(null);
+  const [showRevisionBanner, setShowRevisionBanner] = useState(true);
+
 
   const loadDocs = () =>
     getDocuments().then((r) => setDocs(r.data || [])).catch(() => {});
@@ -285,6 +415,14 @@ export default function DocumentsPage() {
   };
 
   useEffect(() => { loadDocs(); loadNfes(); }, []);
+
+  useEffect(() => {
+  if (docs.length > 0 && docs.some(d => d.status === "REVISION_REQUESTED")) {
+    setShowRevisionBanner(true);
+    const t = setTimeout(() => setShowRevisionBanner(false), 5000);
+    return () => clearTimeout(t);
+  }
+}, [docs.length === 0]);
 
   const filtered = docs.filter((d) =>
     !search || d.name?.toLowerCase().includes(search.toLowerCase())
@@ -377,7 +515,7 @@ async function confirmDeleteNfe() {
           </div>
         )}
 
-        {docs.some(d => d.status === "REVISION_REQUESTED") && (
+        {showRevisionBanner && docs.some(d => d.status === "REVISION_REQUESTED") && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-2">
             <span className="text-amber-600">📝</span>
             <p className="text-[13px] text-amber-700 font-medium">
@@ -459,11 +597,24 @@ async function confirmDeleteNfe() {
                   </span>
                   <span className="text-[13px] text-slate-500">{fmtDate(d.createdAt)}</span>
                   <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <IconButton icon={Eye} label="Visualizar" onClick={() => handleDownload(d.id)} />
-                    {(d.status === "UPLOADED" || d.status === "SENT") && (
+                    <IconButton
+                        icon={Eye}
+                        label="Visualizar"
+                        onClick={() => {
+                          const ext = d.name?.split(".").pop()?.toLowerCase() ?? "";
+                          if (["jpg", "jpeg", "png", "webp"].includes(ext) || ext === "xml" || d.status === "REVISION_REQUESTED") {
+                            setDocDetail(d);
+                          } else {
+                            handleDownload(d.id);
+                          }
+                        }}
+                      />
+                      {!d.createdBy?.startsWith("client:") && (d.status === "UPLOADED" || d.status === "SENT") && (
                       <IconButton icon={FileInput} label="Enviar para revisão" onClick={() => handleSendReview(d.id)} />
                     )}
+                    {!d.createdBy?.startsWith("client:") && (
                     <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setDocToDelete(d)} />
+                    )}
                   </div>
                 </div>
               ))}
@@ -623,6 +774,98 @@ async function confirmDeleteNfe() {
           onConfirm={confirmDeleteDoc}
           onCancel={() => setDocToDelete(null)}
         />
+      )}
+
+      {docDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setDocDetail(null)}>
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <div>
+                <p className="text-[14px] font-semibold text-slate-900">{docDetail.name}</p>
+                <p className="text-[11px] text-slate-400">
+                  {docDetail.client ? getClientDisplayName(docDetail.client) : "—"} · {fmtDate(docDetail.createdAt)}
+                </p>
+              </div>
+              <button onClick={() => setDocDetail(null)} className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Fechar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Preview */}
+            <div className="bg-slate-50 flex items-center justify-center p-4 min-h-[300px] max-h-[65vh] overflow-y-auto">
+            {(() => {
+              const ext = docDetail.name?.split(".").pop()?.toLowerCase() ?? "";
+              if (["jpg", "jpeg", "png", "webp"].includes(ext))
+                return (
+                  <div className="w-full flex flex-col gap-3 p-4">
+                      <div className="flex items-center justify-center">
+                        <ImagePreview doc={docDetail} />
+                      </div>
+                    {docDetail.reviewNotes && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex-shrink-0">
+                        <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">💬 Nota de revisão do cliente</p>
+                        <p className="text-[13px] text-amber-800 whitespace-pre-wrap break-words leading-relaxed max-h-[20vh] overflow-y-auto">{docDetail.reviewNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              if (ext === "xml")
+                return <XmlPreview doc={docDetail} />;
+              if (ext === "pdf")
+                return (
+                  <div className="w-full flex flex-col gap-3">
+                    <PdfPreview doc={docDetail} />
+                    {docDetail.reviewNotes && (
+                      <div className="mx-4 mb-2 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">💬 Nota de revisão do cliente</p>
+                        <p className="text-[13px] text-amber-800 whitespace-pre-wrap break-words leading-relaxed">{docDetail.reviewNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              if (docDetail.reviewNotes)
+                return (
+                  <div className="w-full p-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wide mb-2">💬 Nota de revisão do cliente</p>
+                      <p className="text-[13px] text-amber-800 whitespace-pre-wrap break-words leading-relaxed">{docDetail.reviewNotes}</p>
+                    </div>
+                  </div>
+                );
+              return null;
+            })()}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-slate-100">
+              <Button variant="secondary" onClick={() => setDocDetail(null)}>Fechar</Button>
+              <Button variant="primary" icon={Download} onClick={async () => {
+                const r = await getDownloadUrl(docDetail.id);
+                if (!r.data?.url) return;
+                const ext = docDetail.name?.split(".").pop()?.toLowerCase() ?? "";
+                if (ext === "xml") {
+                  const res = await fetch(r.data.url);
+                  const blob = await res.blob();
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(blob);
+                  a.download = docDetail.name;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                } else {
+                  window.open(r.data.url, "_blank");
+                }
+              }}>
+                Baixar arquivo
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

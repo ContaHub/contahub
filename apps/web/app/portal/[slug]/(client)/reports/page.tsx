@@ -5,6 +5,39 @@ import { useParams } from "next/navigation";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { getPortalClientDownloadUrl, formatFileSize } from "@/lib/portal";
 
+function DocTypeIcon({ name, mimeType }: { name: string; mimeType?: string }) {
+  const ext = name?.split(".").pop()?.toLowerCase() ?? "";
+  if (["jpg", "jpeg", "png", "webp"].includes(ext) || mimeType?.startsWith("image"))
+    return (
+      <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      </div>
+    );
+  if (ext === "pdf" || mimeType?.includes("pdf"))
+    return (
+      <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+    );
+  if (["xls", "xlsx"].includes(ext))
+    return (
+      <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+      </div>
+    );
+  if (ext === "xml")
+    return (
+      <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </div>
+    );
+  return (
+    <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+  );
+}
+
 interface Report {
   id: string;
   name: string;
@@ -166,9 +199,7 @@ export default function ClientReportsPage() {
             <div key={report.id} className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">
-                    {report.mimeType?.includes("pdf") ? "📕" : "📄"}
-                  </span>
+                  <DocTypeIcon name={report.name} mimeType={report.mimeType} />
                   <div>
                     <p className="font-semibold text-gray-900">{report.name}</p>
                     {report.description && (
