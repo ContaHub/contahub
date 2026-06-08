@@ -21,6 +21,8 @@ export default function ClientObligationsPage() {
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+
 
   useEffect(() => {
     async function load() {
@@ -66,6 +68,7 @@ export default function ClientObligationsPage() {
       const err = await res.json();
       throw new Error(err.message || "Erro ao enviar comprovante");
     }
+
     setUploadSuccess("Comprovante enviado! O escritório irá confirmar o pagamento.");
     setObligationForUpload(null);
     setUploadFile(null);
@@ -81,12 +84,25 @@ export default function ClientObligationsPage() {
   }
 }
 
+const filteredObligations = obligations.filter((ob) => {
+    if (filterStatus === "pending") return ob.status === "PENDING" || ob.status === "OVERDUE" || ob.status === "IN_PROGRESS";
+    if (filterStatus === "completed") return ob.status === "COMPLETED";
+    return true;
+  });
+
+  const totalRecolhido = obligations
+    .filter((ob) => ob.status === "COMPLETED" && ob.amount != null)
+    .reduce((acc, ob) => acc + (ob.amount ?? 0), 0);
+
+  const totalConcluidas = obligations.filter((ob) => ob.status === "COMPLETED").length;
+  const totalPendentes = obligations.filter((ob) => ob.status === "PENDING" || ob.status === "OVERDUE" || ob.status === "IN_PROGRESS").length;
+
   return (
     <div>
       {/* Banner de sucesso */}
         {uploadSuccess && (
           <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg flex items-center justify-between">
-            <span>✅ {uploadSuccess}</span>
+            <span>{uploadSuccess}</span>
             <button onClick={() => setUploadSuccess("")} className="text-green-400 hover:text-green-600 ml-4">✕</button>
           </div>
         )}
@@ -120,8 +136,7 @@ export default function ClientObligationsPage() {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-2xl mb-1">📎</p>
-                    <p className="text-sm font-medium text-gray-600">Clique para selecionar o comprovante</p>
+                    <p className="text-sm font-medium text-gray-600">Arraste o arquivo aqui ou clique para selecionar</p>
                     <p className="text-xs text-gray-400 mt-1">PDF, JPG ou PNG — máx. 10MB</p>
                   </div>
                 )}
@@ -129,7 +144,7 @@ export default function ClientObligationsPage() {
 
               {uploadError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg mb-4">
-                  ❌ {uploadError}
+                  {uploadError}
                 </div>
               )}
 
@@ -151,12 +166,62 @@ export default function ClientObligationsPage() {
             </div>
           </div>
         )}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Obrigações Fiscais</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Histórico de obrigações fiscais da sua empresa
-        </p>
-      </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Obrigações Fiscais</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Histórico de obrigações fiscais da sua empresa
+          </p>
+        </div>
+
+        {/* Cards de resumo — só exibe quando há dados */}
+        {!loading && obligations.length > 0 && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-xs text-gray-400 mb-1">Total recolhido</p>
+              <p className="text-xl font-bold text-gray-900">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalRecolhido / 100)}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">obrigações concluídas</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <p className="text-xs text-gray-400 mb-1">Concluídas</p>
+              <p className="text-xl font-bold text-gray-900">{totalConcluidas}</p>
+              <p className="text-xs text-gray-400 mt-0.5">no período</p>
+            </div>
+            <div className={`rounded-xl border p-4 ${totalPendentes > 0 ? "border-orange-200 bg-orange-50" : "border-gray-200 bg-white"}`}>
+              <p className="text-xs text-gray-400 mb-1">Pendentes</p>
+              <p className={`text-xl font-bold mt-0 ${totalPendentes > 0 ? "text-orange-600" : "text-gray-900"}`}>
+                {totalPendentes}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {totalPendentes > 0 ? "requer atenção" : "tudo em dia"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Filtros */}
+        {!loading && obligations.length > 0 && (
+          <div className="flex gap-2 mb-4">
+            {[
+              { key: "all", label: "Todas" },
+              { key: "pending", label: "Pendentes" },
+              { key: "completed", label: "Concluídas" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilterStatus(f.key)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  filterStatus === f.key
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
@@ -179,16 +244,16 @@ export default function ClientObligationsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3 pl-6">Obrigação</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3">Competência</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3">Vencimento</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3">Valor</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3">Status</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3">Ação</th>
+                  <th className="text-left text-xs font-medium text-gray-400 py-3 pl-6">Obrigação</th>
+                  <th className="text-left text-xs font-medium text-gray-400 py-3">Competência</th>
+                  <th className="text-left text-xs font-medium text-gray-400 py-3">Vencimento</th>
+                  <th className="text-left text-xs font-medium text-gray-400 py-3">Valor</th>
+                  <th className="text-left text-xs font-medium text-gray-400 py-3">Status</th>
+                  <th className="text-left text-xs font-medium text-gray-400 py-3">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {obligations.map((ob) => {
+                {filteredObligations.map((ob) => {
                   const status = STATUS_CONFIG[ob.status];
                   return (
                       <tr key={ob.id} className="hover:bg-gray-50 transition-colors">
@@ -222,7 +287,7 @@ export default function ClientObligationsPage() {
                           </span>
                           {ob.status === "COMPLETED" && ob.completedAt && (
                             <p className="text-xs text-gray-400 mt-0.5">
-                              {new Date(ob.completedAt).toLocaleDateString("pt-BR")}
+                              em {new Date(ob.completedAt).toLocaleDateString("pt-BR")}
                             </p>
                           )}
                         </td>
@@ -232,12 +297,12 @@ export default function ClientObligationsPage() {
                               onClick={() => { setObligationForUpload(ob); setUploadFile(null); setUploadError(""); }}
                               className="text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                             >
-                              📤 Enviar comprovante
+                              Enviar comprovante
                             </button>
                           )}
                           {ob.status === "IN_PROGRESS" && (
                             <span className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg">
-                              ⏳ Aguardando confirmação
+                              Aguardando confirmação
                             </span>
                           )}
                         </td>
@@ -245,6 +310,19 @@ export default function ClientObligationsPage() {
                   );
                 })}
               </tbody>
+              {totalRecolhido > 0 && (
+                <tfoot>
+                  <tr className="border-t border-gray-200 bg-gray-50">
+                    <td colSpan={3} className="py-3 pl-6 text-xs font-medium text-gray-500">
+                      Total do período
+                    </td>
+                    <td className="py-3 text-sm font-semibold text-gray-900">
+                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalRecolhido / 100)}
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}

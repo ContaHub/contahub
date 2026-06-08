@@ -21,6 +21,7 @@ export default function ClientDashboardPage() {
   const { getToken } = useAuth();
 
   const [documents, setDocuments] = useState<PortalDocument[]>([]);
+  const [allDocuments, setAllDocuments] = useState<PortalDocument[]>([]);
   const [obligations, setPortalObligations] = useState<PortalObligation[]>([]);
   const [clientId, setClientId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,7 +52,8 @@ export default function ClientDashboardPage() {
           getPortalObligations(slug, data.id, token),
         ]);
 
-        setDocuments(docs.data.slice(0, 3)); // Mostra 3 mais recentes
+        setAllDocuments(docs.data);
+        setDocuments(docs.data.slice(0, 3)); // Mostra 3 mais recentes no widget
         setPortalObligations(obs.data.slice(0, 3));
       } catch {
         // silencia erros no demo
@@ -67,28 +69,49 @@ export default function ClientDashboardPage() {
     (o) => o.status === "PENDING" || o.status === "IN_PROGRESS"
   );
 
+  const docsUnderReview = allDocuments.filter((d) => d.status === "UNDER_REVIEW");
+
   return (
     <div>
       {/* Saudação */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
-          Olá, {user?.firstName || "Cliente"}! 👋
+          Olá, {user?.firstName || "Cliente"}
         </h1>
         <p className="text-gray-500 mt-1">
           Aqui está um resumo das suas informações fiscais.
         </p>
       </div>
 
+      {/* Banner proativo — documentos aguardando aprovação */}
+      {!loading && docsUnderReview.length > 0 && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-lg mb-6">
+          <span>
+            Você tem <strong>{docsUnderReview.length} {docsUnderReview.length === 1 ? "documento" : "documentos"}</strong> aguardando sua aprovação.
+          </span>
+          <Link
+            href={`/portal/${slug}/reports`}
+            className="ml-4 text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap"
+          >
+            Ver documentos →
+          </Link>
+        </div>
+      )}
+
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-sm text-gray-500">Documentos</p>
           <p className="text-3xl font-bold text-gray-900 mt-1">{documents.length}</p>
+          <p className="text-xs text-gray-400 mt-1">disponíveis para você</p>
         </div>
         <div className={`rounded-xl border p-5 ${pendingObligations.length > 0 ? "border-orange-200 bg-orange-50" : "border-gray-200 bg-white"}`}>
           <p className="text-sm text-gray-500">Obrigações Pendentes</p>
           <p className={`text-3xl font-bold mt-1 ${pendingObligations.length > 0 ? "text-orange-600" : "text-gray-900"}`}>
             {pendingObligations.length}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {pendingObligations.length > 0 ? "requer atenção" : "tudo em dia"}
           </p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -96,6 +119,7 @@ export default function ClientDashboardPage() {
           <p className="text-3xl font-bold text-gray-900 mt-1">
             {obligations.filter((o) => o.status === "COMPLETED").length}
           </p>
+          <p className="text-xs text-gray-400 mt-1">concluídas no período</p>
         </div>
       </div>
 
@@ -118,11 +142,13 @@ export default function ClientDashboardPage() {
             {documents.map((doc) => (
               <div key={doc.id} className="flex items-center justify-between px-6 py-3">
                 <div className="flex items-center gap-3">
-                  {/*<span className="text-lg">{doc.mimeType?.includes("pdf") ? "📕" : "📄"}</span> --> Removi para deixar sem ícones*/}
-                  <span className="text-lg">{doc.mimeType?.includes("pdf") ? "" : ""}</span>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{doc.name}</p>
-                    {doc.description && <p className="text-xs text-gray-400">{doc.description}</p>}
+                    <p className="text-sm font-medium text-gray-900">
+                      {doc.description && !doc.description.startsWith("[") ? doc.description : doc.name}
+                    </p>
+                    {doc.description && !doc.description.startsWith("[") && (
+                      <p className="text-xs text-gray-400">{doc.name}</p>
+                    )}
                   </div>
                 </div>
                 <span className="text-xs text-gray-400">

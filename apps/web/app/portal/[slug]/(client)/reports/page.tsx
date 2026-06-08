@@ -171,7 +171,14 @@ export default function ClientReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Documentos para Aprovação</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Documentos para Aprovação
+          {reports.length > 0 && (
+            <span className="ml-2 text-sm font-medium bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">
+              {reports.length} {reports.length === 1 ? "pendente" : "pendentes"}
+            </span>
+          )}
+        </h1>
         <p className="mt-1 text-sm text-gray-500">
           Revise e aprove os documentos enviados pelo seu escritório contábil.
         </p>
@@ -189,9 +196,11 @@ export default function ClientReportsPage() {
         </div>
       ) : reports.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 text-center py-16">
-          <p className="text-3xl mb-3">✅</p>
           <p className="text-gray-500 font-medium">Nenhum documento pendente de aprovação</p>
-          <p className="text-gray-400 text-sm mt-1">Quando o escritório enviar documentos, eles aparecerão aqui</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Quando o escritório enviar documentos para sua revisão, eles aparecerão aqui. 
+            Você também pode enviar documentos na aba Documentos.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -201,9 +210,11 @@ export default function ClientReportsPage() {
                 <div className="flex items-center gap-3">
                   <DocTypeIcon name={report.name} mimeType={report.mimeType} />
                   <div>
-                    <p className="font-semibold text-gray-900">{report.name}</p>
+                    <p className="font-semibold text-gray-900">
+                      {report.description || report.name}
+                    </p>
                     {report.description && (
-                      <p className="text-sm text-gray-500">{report.description}</p>
+                      <p className="text-xs text-gray-400">{report.name}</p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
                       {report.sizeBytes && `${formatFileSize(report.sizeBytes)} · `}
@@ -239,7 +250,7 @@ export default function ClientReportsPage() {
                   disabled={processing === report.id}
                   className="flex-1 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors"
                 >
-                  {processing === report.id ? "Processando..." : "✅ Aprovar documento"}
+                  {processing === report.id ? "Processando..." : "Aprovar documento"}
                 </button>
 
                 {showRevisionInput === report.id ? (
@@ -255,7 +266,7 @@ export default function ClientReportsPage() {
                     onClick={() => setShowRevisionInput(report.id)}
                     className="flex-1 py-2 text-sm font-medium text-orange-600 border border-orange-200 hover:bg-orange-50 rounded-lg transition-colors"
                   >
-                    📝 Revisar documento
+                    Solicitar revisão
                   </button>
                 )}
               </div>

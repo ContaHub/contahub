@@ -42,7 +42,7 @@ function DocTypeIcon({ name, mimeType }: { name: string; mimeType?: string }) {
 }
 
 const STATUS_LABELS: Record<string, { label: string; class: string }> = {
-  UPLOADED: { label: "Disponível", class: "bg-blue-100 text-blue-700" },
+  UPLOADED: { label: "Aguardando análise", class: "bg-blue-100 text-blue-700 whitespace-nowrap" },
   APPROVED: { label: "Aprovado", class: "bg-green-100 text-green-700" },
   UNDER_REVIEW: { label: "Em revisão", class: "bg-yellow-100 text-yellow-700" },
   Rejeitado: { label: "Revisão solicitada", class: "bg-red-100 text-red-700" },
@@ -67,6 +67,8 @@ export default function ClientDocumentsPage() {
   const [uploadError, setUploadError] = useState("");
   const [description, setDescription] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [filterOrigin, setFilterOrigin] = useState<string>("all");
+  const [docType, setDocType] = useState("");
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
@@ -159,6 +161,7 @@ export default function ClientDocumentsPage() {
       const formData = new FormData();
       formData.append("file", file);
       if (description) formData.append("description", description);
+      if (docType) formData.append("documentType", docType);
 
       const res = await fetch(`${API_URL}/api/v1/portal/${slug}/documents/${clientId}/upload`, {
         method: "POST",
@@ -173,6 +176,7 @@ export default function ClientDocumentsPage() {
 
       setUploadSuccess("Documento enviado com sucesso! O escritório será notificado.");
       setDescription("");
+      setDocType("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       await loadDocuments(clientId, token);
     } catch (err: any) {
@@ -209,13 +213,20 @@ export default function ClientDocumentsPage() {
     </div>
   ) : null;
 
+  const filteredDocuments = documents.filter((doc) => {
+    const isByClient = doc.description?.startsWith("[Cliente]") || doc.description === "[Enviado pelo cliente]";
+    if (filterOrigin === "mine") return isByClient;
+    if (filterOrigin === "office") return !isByClient;
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       {ConfirmDeleteModal}
 
       {deleteError && (
         <div className="flex items-center justify-between bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-          <span>❌ {deleteError}</span>
+          <span>{deleteError}</span>
           <button onClick={() => setDeleteError("")} className="text-red-400 hover:text-red-600 ml-4">✕</button>
         </div>
       )}
@@ -233,6 +244,19 @@ export default function ClientDocumentsPage() {
           Envie extratos, notas fiscais ou qualquer documento para o seu contador.
         </p>
         <div className="space-y-3">
+          <select
+            value={docType}
+            onChange={(e) => setDocType(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
+          >
+            <option value="">Tipo de documento (opcional)</option>
+            <option value="Extrato Bancário">Extrato Bancário</option>
+            <option value="Nota Fiscal">Nota Fiscal</option>
+            <option value="Contrato">Contrato</option>
+            <option value="Comprovante de Pagamento">Comprovante de Pagamento</option>
+            <option value="Declaração">Declaração</option>
+            <option value="Outros">Outros</option>
+          </select>
           <input
             type="text"
             value={description}
@@ -259,20 +283,19 @@ export default function ClientDocumentsPage() {
               </div>
             ) : (
               <div>
-                <p className="text-2xl mb-1">📎</p>
-                <p className="text-sm font-medium text-gray-600">Clique para selecionar arquivo</p>
+                <p className="text-sm font-medium text-gray-600">Arraste o arquivo aqui ou clique para selecionar</p>
                 <p className="text-xs text-gray-400 mt-1">PDF, imagens, Excel, XML — máx. 10MB</p>
               </div>
             )}
           </div>
           {uploadSuccess && (
             <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">
-              ✅ {uploadSuccess}
+              {uploadSuccess}
             </div>
           )}
           {uploadError && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-              ❌ {uploadError}
+              {uploadError}
             </div>
           )}
         </div>
@@ -280,9 +303,30 @@ export default function ClientDocumentsPage() {
 
       {/* Lista */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Documentos disponíveis</h2>
-        </div>
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+        <h2 className="font-semibold text-gray-900">Documentos disponíveis</h2>
+        {documents.length > 0 && (
+          <div className="flex gap-2">
+            {[
+              { key: "all", label: "Todos" },
+              { key: "office", label: "Do escritório" },
+              { key: "mine", label: "Enviados por mim" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilterOrigin(f.key)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
+                  filterOrigin === f.key
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-blue-300"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -290,12 +334,12 @@ export default function ClientDocumentsPage() {
           </div>
         ) : documents.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-3xl mb-2">📁</p>
             <p className="text-gray-500 text-sm">Nenhum documento disponível ainda</p>
+            <p className="text-xs text-gray-400 mt-1">Documentos enviados pelo escritório aparecerão aqui.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {documents.map((doc) => {
+            {filteredDocuments.map((doc) => {
               const status = STATUS_LABELS[doc.status] || STATUS_LABELS.UPLOADED;
               const isByClient = doc.description?.startsWith("[Cliente]") || doc.description === "[Enviado pelo cliente]";
               return (
@@ -305,14 +349,19 @@ export default function ClientDocumentsPage() {
                       <DocTypeIcon name={doc.name} mimeType={doc.mimeType} />
                     </span>
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium text-gray-900">{doc.name}</p>
-                        {isByClient && (
-                          <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
-                            Enviado por você
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-gray-900">
+                        {doc.description && !doc.description.startsWith("[") ? doc.description : doc.name}
+                      </p>
+                      {isByClient && (
+                        <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">
+                          Enviado por você
+                        </span>
+                      )}
+                    </div>
+                    {doc.description && !doc.description.startsWith("[") && (
+                      <p className="text-xs text-gray-400">{doc.name}</p>
+                    )}
                       <p className="text-xs text-gray-400">
                         {doc.sizeBytes && `${formatFileSize(doc.sizeBytes)} · `}
                         {new Date(doc.createdAt).toLocaleDateString("pt-BR")}

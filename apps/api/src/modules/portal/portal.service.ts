@@ -74,7 +74,7 @@ export class PortalService {
       where: {
         workspaceId: workspace.id,
         clientId,
-        status: { in: ["UPLOADED", "APPROVED"] },
+        status: { in: ["UPLOADED", "APPROVED", "UNDER_REVIEW"] },
       },
       select: {
         id: true, name: true, description: true,
