@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Card, Badge, Button, IconButton,
@@ -15,6 +15,8 @@ import { getClients, deleteClient } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
 import { getClientDisplayName } from "@contahub/shared";
+
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 function clientInitials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -33,6 +35,65 @@ function avatarColor(name: string) {
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
   return avatarColors[Math.abs(h) % avatarColors.length];
 }
+
+// FIX-1: Formata enums do Prisma para exibição legível
+const TAX_REGIME_LABELS: Record<string, string> = {
+  SIMPLES_NACIONAL:      "Simples Nacional",
+  LUCRO_PRESUMIDO:       "Lucro Presumido",
+  LUCRO_REAL:            "Lucro Real",
+  MEI:                   "MEI",
+  ISENTO:                "Isento",
+};
+
+function formatTaxRegime(regime: string | null | undefined): string {
+  if (!regime) return "—";
+  return TAX_REGIME_LABELS[regime] ?? regime;
+}
+
+// FIX-2: Pill de regime com cor semântica
+function RegimePill({ regime }: { regime: string | null | undefined }) {
+  const label = formatTaxRegime(regime);
+  const colorClass =
+    regime === "SIMPLES_NACIONAL" || regime === "MEI"
+      ? "bg-blue-50 text-blue-700 border-blue-100"
+      : regime === "LUCRO_PRESUMIDO"
+      ? "bg-amber-50 text-amber-700 border-amber-100"
+      : regime === "LUCRO_REAL"
+      ? "bg-purple-50 text-purple-700 border-purple-100"
+      : "bg-slate-100 text-slate-600 border-slate-200";
+
+  return (
+    <span className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md border ${colorClass}`}>
+      {label}
+    </span>
+  );
+}
+
+// FIX-3: Badge de situação CNPJ — discreto, sem caixa alta, sem banner
+function CnpjStatusBadge({ status }: { status: string }) {
+  if (status === "ATIVA") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full w-fit">
+        <CheckCircle2 size={10} />
+        Ativa
+      </span>
+    );
+  }
+  const colorClass =
+    status === "INAPTA"         ? "bg-red-50 text-red-600" :
+    status === "BAIXADA"        ? "bg-slate-100 text-slate-500" :
+    status === "SUSPENSA"       ? "bg-orange-50 text-orange-600" :
+    status === "NÃO ENCONTRADO" ? "bg-yellow-50 text-yellow-700" :
+                                  "bg-red-50 text-red-600";
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full w-fit ${colorClass}`}>
+      <AlertTriangle size={10} />
+      {status === "NÃO ENCONTRADO" ? "CNPJ inválido" : status.charAt(0) + status.slice(1).toLowerCase()}
+    </span>
+  );
+}
+
+// ── page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientsPage() {
   const openMenu = useMobileMenu();
@@ -169,41 +230,25 @@ export default function ClientsPage() {
                   </div>
                 </div>
 
-                {/* CNPJ + badge situação cadastral */}
+                {/* FIX-3: CNPJ + badge de situação discreto */}
                 <div className="flex flex-col gap-1">
                   <span className="text-[12px] font-mono text-slate-500 truncate">{c.cnpj || c.cpf || "—"}</span>
-                  {c.cnpjStatus && c.cnpjStatus !== "ATIVA" && (
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit ${
-                      c.cnpjStatus === "INAPTA"         ? "bg-red-100 text-red-700" :
-                      c.cnpjStatus === "BAIXADA"        ? "bg-gray-100 text-gray-700" :
-                      c.cnpjStatus === "SUSPENSA"       ? "bg-orange-100 text-orange-700" :
-                      c.cnpjStatus === "NÃO ENCONTRADO" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-red-100 text-red-700"
-                    }`}>
-                      ⚠️ {c.cnpjStatus}
-                    </span>
-                  )}
-                  {c.cnpjStatus === "ATIVA" && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit bg-green-50 text-green-600">
-                      ✓ Ativa
-                    </span>
-                  )}
+                  {c.cnpjStatus && <CnpjStatusBadge status={c.cnpjStatus} />}
                   {c.ecacAlertCount > 0 && (
                     <span
                       onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit bg-red-50 text-red-600 cursor-pointer hover:bg-red-100 transition-colors"
                       title="Ver pendências na Receita Federal"
                     >
-                      ⚠️ {c.ecacAlertCount} RF
+                      <AlertTriangle size={10} />
+                      {c.ecacAlertCount} RF
                     </span>
                   )}
                 </div>
 
-                {/* Regime */}
+                {/* FIX-1 + FIX-2: Regime formatado com pill colorida */}
                 <span>
-                  <span className="text-[11px] text-slate-600 bg-slate-100 border border-slate-200 rounded-md px-2 py-0.5 font-medium">
-                    {c.taxRegime || "—"}
-                  </span>
+                  <RegimePill regime={c.taxRegime} />
                 </span>
 
                 {/* Status */}
@@ -213,13 +258,25 @@ export default function ClientsPage() {
                   </Badge>
                 </span>
 
-                {/* Contato */}
-                <div className="min-w-0">
-                  <p className="text-[12px] text-slate-500 truncate">{c.email || "—"}</p>
-                  <p className="text-[11px] text-slate-400">{c.phone || c.whatsapp || ""}</p>
+                {/* FIX-4: Contato com ícones de e-mail e telefone */}
+                <div className="min-w-0 flex flex-col gap-0.5">
+                  {c.email ? (
+                    <p className="text-[12px] text-slate-500 truncate flex items-center gap-1">
+                      <Mail size={11} className="flex-shrink-0 text-slate-400" />
+                      {c.email}
+                    </p>
+                  ) : (
+                    <p className="text-[12px] text-slate-400">—</p>
+                  )}
+                  {(c.phone || c.whatsapp) && (
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <Phone size={11} className="flex-shrink-0 text-slate-300" />
+                      {c.phone || c.whatsapp}
+                    </p>
+                  )}
                 </div>
 
-                {/* Ações */}
+                {/* Ações — sem alteração */}
                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <IconButton
                     icon={checkingId === c.id ? Loader : Search}
@@ -243,7 +300,7 @@ export default function ClientsPage() {
             ))}
           </div>
 
-          {/* Mobile card list */}
+          {/* Mobile card list — sem alteração */}
           <div className="md:hidden">
             {filtered.length === 0 && (
               <EmptyState icon={Users} title="Nenhum cliente" description="Adicione clientes para começar." />
@@ -255,7 +312,7 @@ export default function ClientsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-slate-900 truncate">{getClientDisplayName(c)}</p>
-                  <p className="text-[12px] text-slate-500 truncate">{c.cnpj || c.cpf} · {c.taxRegime}</p>
+                  <p className="text-[12px] text-slate-500 truncate">{c.cnpj || c.cpf} · {formatTaxRegime(c.taxRegime)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={c.status === "ACTIVE" ? "success" : "gray"}>
@@ -270,7 +327,7 @@ export default function ClientsPage() {
         </Card>
       </div>
 
-      {/* Modal de cadastro/edição de cliente */}
+      {/* Modais — sem alteração */}
       {modalOpen && (
         <ClientModal
           client={editClient}
@@ -279,7 +336,6 @@ export default function ClientsPage() {
         />
       )}
 
-      {/* Modal de certificado digital A1 */}
       {certClient && (
         <CertificateModal
           clientId={certClient.id}

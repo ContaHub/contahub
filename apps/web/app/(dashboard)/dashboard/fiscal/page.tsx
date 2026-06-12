@@ -2,11 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { Check, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, AlertCircle, CheckCircle, X } from "lucide-react";
 import { getObligations, completeObligation, updateObligation, deleteObligation } from "@/lib/fiscal";
 import { ObligationModal } from "@/components/fiscal/ObligationModal";
+import { PageHeader, Card, Badge, IconButton } from "@/components/ui";
+import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { getClientDisplayName } from "@contahub/shared";
 
 // ─── Tipos ───────────────────────────────────────────────────
+
 interface FiscalObligation {
   id: string;
   type: string;
@@ -20,6 +24,7 @@ interface FiscalObligation {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
+
 const PT_MONTHS = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
@@ -37,18 +42,15 @@ function formatDate(dateStr: string) {
 
 function formatCompetence(comp: string) {
   if (!comp) return "—";
-  // ISO: "2026-01-01T..." → "01/2026"
   if (comp.includes("T") || (comp.includes("-") && comp.length > 7)) {
     const d = new Date(comp);
     const m = String(d.getMonth() + 1).padStart(2, "0");
     return `${m}/${d.getFullYear()}`;
   }
-  // "2026-01" → "01/2026"
   if (/^\d{4}-\d{2}$/.test(comp)) {
     const [y, m] = comp.split("-");
     return `${m}/${y}`;
   }
-  // Já está em "01/2026"
   return comp;
 }
 
@@ -57,24 +59,14 @@ function formatCurrency(value?: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value / 100);
 }
 
-/**
- * Extrai "YYYY-MM" de qualquer formato de data/competência.
- * Aceita: ISO datetime, "2026-01", "01/2026", "2026-01-01"
- * Retorna null se não conseguir parsear.
- */
 function extractYearMonth(value: string | null | undefined): string | null {
   if (!value) return null;
-  // ISO datetime: "2026-01-15T00:00:00.000Z"
   if (value.includes("T")) {
     const d = new Date(value);
     if (isNaN(d.getTime())) return null;
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
-  // "2026-01-15" ou "2026-01"
-  if (/^\d{4}-\d{2}/.test(value)) {
-    return value.substring(0, 7); // pega só "YYYY-MM"
-  }
-  // "01/2026"
+  if (/^\d{4}-\d{2}/.test(value)) return value.substring(0, 7);
   if (/^\d{2}\/\d{4}$/.test(value)) {
     const [m, y] = value.split("/");
     return `${y}-${m}`;
@@ -82,7 +74,27 @@ function extractYearMonth(value: string | null | undefined): string | null {
   return null;
 }
 
+// ─── Pill de tipo de obrigação ────────────────────────────────
+
+const OBL_TYPE_COLORS: Record<string, string> = {
+  DAS:   "bg-blue-50 text-blue-700 border-blue-100",
+  DARF:  "bg-amber-50 text-amber-700 border-amber-100",
+  DEFIS: "bg-green-50 text-green-700 border-green-100",
+  DCTFWeb: "bg-purple-50 text-purple-700 border-purple-100",
+  GFIP:  "bg-rose-50 text-rose-700 border-rose-100",
+};
+
+function ObligationTypePill({ type }: { type: string }) {
+  const color = OBL_TYPE_COLORS[type] ?? "bg-slate-100 text-slate-600 border-slate-200";
+  return (
+    <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md border ${color}`}>
+      {type}
+    </span>
+  );
+}
+
 // ─── MonthPicker ─────────────────────────────────────────────
+
 interface MonthPickerProps {
   value: { year: number; month: number } | null;
   onChange: (v: { year: number; month: number } | null) => void;
@@ -90,21 +102,13 @@ interface MonthPickerProps {
 
 function MonthPicker({ value, onChange }: MonthPickerProps) {
   function prev() {
-    if (!value) {
-      const now = new Date();
-      onChange({ year: now.getFullYear(), month: now.getMonth() + 1 });
-      return;
-    }
+    if (!value) { const now = new Date(); onChange({ year: now.getFullYear(), month: now.getMonth() + 1 }); return; }
     const m = value.month === 1 ? 12 : value.month - 1;
     const y = value.month === 1 ? value.year - 1 : value.year;
     onChange({ year: y, month: m });
   }
   function next() {
-    if (!value) {
-      const now = new Date();
-      onChange({ year: now.getFullYear(), month: now.getMonth() + 1 });
-      return;
-    }
+    if (!value) { const now = new Date(); onChange({ year: now.getFullYear(), month: now.getMonth() + 1 }); return; }
     const m = value.month === 12 ? 1 : value.month + 1;
     const y = value.month === 12 ? value.year + 1 : value.year;
     onChange({ year: y, month: m });
@@ -112,61 +116,93 @@ function MonthPicker({ value, onChange }: MonthPickerProps) {
   const label = value ? monthLabel(value.year, value.month) : "Todos os meses";
 
   return (
-    <div className="flex items-center gap-1 border border-gray-300 rounded-lg bg-white px-1 py-1.5">
-      <button onClick={prev} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors" aria-label="Mês anterior">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
+    <div className="flex items-center gap-0.5 border border-slate-200 rounded-lg bg-white px-1 py-1">
+      <button
+        onClick={prev}
+        className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+        aria-label="Mês anterior"
+      >
+        <ChevronLeft size={15} />
       </button>
       <button
         onClick={() => onChange(null)}
-        className={`text-sm font-medium px-2 min-w-[140px] text-center rounded transition-colors ${
-          value ? "text-gray-700 hover:text-blue-600" : "text-blue-600"
+        className={`text-[13px] font-medium px-2 min-w-[148px] text-center rounded-md transition-colors ${
+          value ? "text-slate-700 hover:text-blue-600" : "text-blue-600"
         }`}
         title={value ? "Clique para ver todos os meses" : "Mostrando todos os meses"}
       >
         {label}
       </button>
-      <button onClick={next} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors" aria-label="Próximo mês">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+      <button
+        onClick={next}
+        className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+        aria-label="Próximo mês"
+      >
+        <ChevronRight size={15} />
       </button>
     </div>
   );
 }
 
-// ─── Labels / estilos ────────────────────────────────────────
+// ─── Status ───────────────────────────────────────────────────
+
 const STATUS_LABELS: Record<string, string> = {
-  PENDING:   "Pendente",
-  COMPLETED: "Concluída",
-  OVERDUE:   "Vencida",
-  CANCELED:  "Cancelada",
+  PENDING:     "Pendente",
+  COMPLETED:   "Concluída",
+  OVERDUE:     "Vencida",
+  CANCELED:    "Cancelada",
   IN_PROGRESS: "Comprovante enviado",
 };
-const STATUS_CLASSES: Record<string, string> = {
-  PENDING:   "bg-yellow-100 text-yellow-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  OVERDUE:   "bg-red-100 text-red-800",
-  CANCELED:  "bg-gray-100 text-gray-600",
-  IN_PROGRESS: "bg-blue-100 text-blue-800",
+
+// Mapeamento para variantes do Badge do design system
+const STATUS_BADGE_VARIANT: Record<string, "warning" | "success" | "danger" | "gray" | "info"> = {
+  PENDING:     "warning",
+  COMPLETED:   "success",
+  OVERDUE:     "danger",
+  CANCELED:    "gray",
+  IN_PROGRESS: "info",
 };
 
+// ─── Toast interno ────────────────────────────────────────────
+
+function Toast({ type, message, onClose }: { type: "error" | "success"; message: string; onClose: () => void }) {
+  const isError = type === "error";
+  return (
+    <div className={`flex items-center justify-between text-sm px-4 py-3 rounded-lg mb-4 border ${
+      isError
+        ? "bg-red-50 border-red-200 text-red-700"
+        : "bg-green-50 border-green-200 text-green-700"
+    }`}>
+      <div className="flex items-center gap-2">
+        {isError
+          ? <AlertCircle size={15} className="flex-shrink-0" />
+          : <CheckCircle size={15} className="flex-shrink-0" />}
+        {message}
+      </div>
+      <button onClick={onClose} className="ml-4 opacity-60 hover:opacity-100 transition-opacity">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 // ─── Página ───────────────────────────────────────────────────
+
 export default function FiscalPage() {
+  const openMenu = useMobileMenu();
   const { getToken } = useAuth();
 
-  const [selectedMonth, setSelectedMonth] = useState<{ year: number; month: number } | null>(null);
+  const [selectedMonth, setSelectedMonth]     = useState<{ year: number; month: number } | null>(null);
   const [selectedStatus, setSelectedStatus]   = useState<string>("");
   const [selectedClient, setSelectedClient]   = useState<string>("");
 
-  const [obligations, setObligations] = useState<FiscalObligation[]>([]);
-  const [allClients, setAllClients]   = useState<{ id: string; name: string }[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [showModal, setShowModal]     = useState(false);
-  const [completing, setCompleting]   = useState<string | null>(null);
-  const [errorMsg, setErrorMsg]       = useState<string | null>(null);
-  const [successMsg, setSuccessMsg]   = useState<string | null>(null);
+  const [obligations, setObligations]         = useState<FiscalObligation[]>([]);
+  const [allClients, setAllClients]           = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading]                 = useState(true);
+  const [showModal, setShowModal]             = useState(false);
+  const [completing, setCompleting]           = useState<string | null>(null);
+  const [errorMsg, setErrorMsg]               = useState<string | null>(null);
+  const [successMsg, setSuccessMsg]           = useState<string | null>(null);
   const [obligationToDelete, setObligationToDelete] = useState<FiscalObligation | null>(null);
   const [obligationToEdit, setObligationToEdit]     = useState<FiscalObligation | null>(null);
 
@@ -178,9 +214,6 @@ export default function FiscalPage() {
     setLoading(true);
     try {
       const token = await getToken();
-      // Busca SEMPRE sem filtro de mês na API (filtro feito no front)
-      // Isso garante que obrigações com competence em formatos variados
-      // sejam todas retornadas e filtradas corretamente aqui.
       const data = await getObligations(token, {
         status:   selectedStatus || undefined,
         clientId: selectedClient || undefined,
@@ -188,7 +221,6 @@ export default function FiscalPage() {
       const list: FiscalObligation[] = data?.data ?? data ?? [];
       setObligations(list);
 
-      // Clientes únicos para o select
       setAllClients((prev) => {
         const merged = new Map(prev.map((c) => [c.id, c.name]));
         list.forEach((o) => {
@@ -203,17 +235,11 @@ export default function FiscalPage() {
     }
   }, [getToken, selectedStatus, selectedClient]);
 
-  useEffect(() => {
-    loadObligations();
-  }, [loadObligations]);
+  useEffect(() => { loadObligations(); }, [loadObligations]);
 
-  // ─── Filtro local (robusto para qualquer formato de data) ──
   const filtered = obligations.filter((o) => {
-    // Filtro status
     if (selectedStatus && o.status !== selectedStatus) return false;
-    // Filtro cliente
     if (selectedClient && o.clientId !== selectedClient) return false;
-    // Filtro mês — usa competence; fallback para dueDate
     if (monthParam) {
       const compYM = extractYearMonth(o.competence) ?? extractYearMonth(o.dueDate);
       if (!compYM || compYM !== monthParam) return false;
@@ -221,245 +247,304 @@ export default function FiscalPage() {
     return true;
   });
 
-async function handleDelete(o: FiscalObligation) {
-  setObligationToDelete(o);
-}
-
-async function confirmDelete() {
-  if (!obligationToDelete) return;
-  try {
-    const token = await getToken();
-    await deleteObligation(obligationToDelete.id, token);
-    setSuccessMsg("Obrigação removida.");
-    setTimeout(() => setSuccessMsg(null), 4000);
-    setObligationToDelete(null);
-    await loadObligations();
-  } catch (err: any) {
-    setErrorMsg(err?.message ?? "Erro ao remover obrigação.");
-    setTimeout(() => setErrorMsg(null), 5000);
-    setObligationToDelete(null);
+  async function handleDelete(o: FiscalObligation) {
+    setObligationToDelete(o);
   }
-}  
 
-async function handleComplete(id: string) {
-  setCompleting(id);
-  setErrorMsg(null);
-  setSuccessMsg(null);
-  try {
-    const token = await getToken();
-    await completeObligation(id, token);
-    setSuccessMsg("Obrigação concluída com sucesso!");
-    setTimeout(() => setSuccessMsg(null), 4000);
-    await loadObligations();
-  } catch (err: any) {
-    setErrorMsg(err?.message ?? "Erro ao concluir obrigação.");
-    setTimeout(() => setErrorMsg(null), 5000);
-  } finally {
-    setCompleting(null);
+  async function confirmDelete() {
+    if (!obligationToDelete) return;
+    try {
+      const token = await getToken();
+      await deleteObligation(obligationToDelete.id, token);
+      setSuccessMsg("Obrigação removida com sucesso.");
+      setTimeout(() => setSuccessMsg(null), 4000);
+      setObligationToDelete(null);
+      await loadObligations();
+    } catch (err: any) {
+      setErrorMsg(err?.message ?? "Erro ao remover obrigação.");
+      setTimeout(() => setErrorMsg(null), 5000);
+      setObligationToDelete(null);
+    }
   }
-}
+
+  async function handleComplete(id: string) {
+    setCompleting(id);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const token = await getToken();
+      await completeObligation(id, token);
+      setSuccessMsg("Obrigação concluída com sucesso!");
+      setTimeout(() => setSuccessMsg(null), 4000);
+      await loadObligations();
+    } catch (err: any) {
+      setErrorMsg(err?.message ?? "Erro ao concluir obrigação.");
+      setTimeout(() => setErrorMsg(null), 5000);
+    } finally {
+      setCompleting(null);
+    }
+  }
 
   const hasFilters = selectedMonth !== null || !!selectedStatus || !!selectedClient;
 
+  const subtitleText = loading
+    ? "Carregando..."
+    : `${filtered.length} ${filtered.length === 1 ? "obrigação encontrada" : "obrigações encontradas"}`;
+
   return (
-    <div className="p-6">
-      {/* Toast de erro */}
-      {errorMsg && (
-        <div className="flex items-center justify-between bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            </svg>
-            {errorMsg}
-          </div>
-          <button onClick={() => setErrorMsg(null)} className="text-red-400 hover:text-red-600 ml-4">✕</button>
-        </div>
-      )}
-
-      {/* Toast de sucesso */}
-      {successMsg && (
-        <div className="flex items-center justify-between bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg mb-4">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            {successMsg}
-          </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-green-400 hover:text-green-600 ml-4">✕</button>
-        </div>
-      )}
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fiscal</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {loading
-              ? "Carregando..."
-              : `${filtered.length} obrigação(ões) encontrada(s)`}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          + Nova obrigação
-        </button>
-      </div>
-
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
-
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os status</option>
-          {Object.entries(STATUS_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
-          ))}
-        </select>
-
-        <select
-          value={selectedClient}
-          onChange={(e) => setSelectedClient(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos os clientes</option>
-          {allClients.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-
-        {hasFilters && (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Mobile topbar */}
+      <MobileHeader
+        onMenuClick={openMenu}
+        title="Fiscal"
+        subtitle={subtitleText}
+        action={
           <button
-            onClick={() => { setSelectedMonth(null); setSelectedStatus(""); setSelectedClient(""); }}
-            className="text-sm text-gray-400 hover:text-gray-700 underline px-1 transition-colors"
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors"
           >
-            Limpar filtros
+            <Plus size={14} />
+            Nova
           </button>
-        )}
-      </div>
+        }
+      />
 
-      {/* Tabela */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50">
-              {["Obrigação","Cliente","Competência","Vencimento","Valor","Status",""].map((h, i) => (
-                <th key={i} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3">
+      {/* Desktop topbar */}
+      <PageHeader
+        title="Fiscal"
+        subtitle={subtitleText}
+        action={
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[13px] font-medium transition-colors"
+          >
+            <Plus size={15} />
+            Nova obrigação
+          </button>
+        }
+      />
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
+
+        {/* Toasts */}
+        {errorMsg   && <Toast type="error"   message={errorMsg}   onClose={() => setErrorMsg(null)}   />}
+        {successMsg && <Toast type="success" message={successMsg} onClose={() => setSuccessMsg(null)} />}
+
+        {/* Filtros */}
+        <div className="flex flex-wrap items-center gap-2.5 mb-5">
+          <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-[13px] text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
+          >
+            <option value="">Todos os status</option>
+            {Object.entries(STATUS_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedClient}
+            onChange={(e) => setSelectedClient(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-[13px] text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
+          >
+            <option value="">Todos os clientes</option>
+            {allClients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+
+          {hasFilters && (
+            <button
+              onClick={() => { setSelectedMonth(null); setSelectedStatus(""); setSelectedClient(""); }}
+              className="flex items-center gap-1 text-[13px] text-slate-400 hover:text-slate-700 transition-colors px-1"
+            >
+              <X size={13} />
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
+        {/* Tabela */}
+        <Card>
+          <div className="hidden md:block">
+            {/* Cabeçalho */}
+            <div className="grid grid-cols-[1.2fr_1.8fr_0.9fr_0.9fr_0.9fr_1fr_100px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+              {["Obrigação", "Cliente", "Competência", "Vencimento", "Valor", "Status", ""].map((h) => (
+                <span key={h} className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]">
                   {h}
-                </th>
+                </span>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-16 text-gray-400 text-sm">
-                  Carregando obrigações...
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-16">
-                  <div className="flex flex-col items-center gap-2 text-gray-400">
-                    <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="font-medium">Nenhuma obrigação encontrada</p>
-                    <p className="text-xs">
-                      {hasFilters ? (
-                        <>Tente ajustar os filtros ou{" "}
-                          <button
-                            onClick={() => { setSelectedMonth(null); setSelectedStatus(""); setSelectedClient(""); }}
-                            className="text-blue-600 hover:underline"
-                          >limpe os filtros</button>
-                        </>
-                      ) : (
-                        <button onClick={() => setShowModal(true)} className="text-blue-600 hover:underline">
-                          crie uma nova obrigação
-                          </button>
-                        )}
-                     </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-              filtered.map((o) => (
-                <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{o.type}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {o.client ? getClientDisplayName(o.client) : "—"}
-                    {o.client?.cnpj && <span className="block text-xs text-gray-400">{o.client.cnpj}</span>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{formatCompetence(o.competence)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{formatDate(o.dueDate)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(o.value)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex text-xs font-medium px-2 py-1 rounded-full ${STATUS_CLASSES[o.status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {STATUS_LABELS[o.status] ?? o.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex gap-1.5 justify-end">
-                      {(o.status === "PENDING" ||
-                        o.status === "OVERDUE" ||
-                        o.status === "IN_PROGRESS") && (
-                        <>
-                          <button
-                            onClick={() => handleComplete(o.id)}
-                            disabled={completing === o.id}
-                            className="text-xs text-green-700 hover:text-green-900 font-medium border border-green-300 hover:border-green-500 px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            {completing === o.id ? "..." : "✓ Concluir"}
-                          </button>
+            </div>
 
-                          <button
-                            onClick={() => setObligationToEdit(o)}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-medium border border-blue-200 hover:border-blue-400 px-3 py-1 rounded-lg transition-colors"
-                          >
-                            ✏️
-                          </button>
-
-                          <button
-                            onClick={() => handleDelete(o)}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 hover:border-red-400 px-3 py-1 rounded-lg transition-colors"
-                          >
-                            🗑
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            )
+            {/* Loading */}
+            {loading && (
+              <div className="py-16 text-center text-[13px] text-slate-400">
+                Carregando obrigações…
+              </div>
             )}
-          </tbody>
-        </table>
+
+            {/* Empty state */}
+            {!loading && filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+                  <CheckCircle size={22} className="text-slate-300" />
+                </div>
+                <p className="text-[13px] font-semibold text-slate-700 mb-1">
+                  Nenhuma obrigação encontrada
+                </p>
+                <p className="text-[12px] text-slate-400 max-w-[240px]">
+                  {hasFilters ? (
+                    <>
+                      Tente ajustar os filtros ou{" "}
+                      <button
+                        onClick={() => { setSelectedMonth(null); setSelectedStatus(""); setSelectedClient(""); }}
+                        className="text-blue-600 hover:underline"
+                      >
+                        limpe os filtros
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => setShowModal(true)} className="text-blue-600 hover:underline">
+                      crie uma nova obrigação
+                    </button>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Linhas */}
+            {!loading && filtered.map((o) => (
+              <div
+                key={o.id}
+                className="group grid grid-cols-[1.2fr_1.8fr_0.9fr_0.9fr_0.9fr_1fr_100px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+              >
+                {/* Tipo */}
+                <div>
+                  <ObligationTypePill type={o.type} />
+                </div>
+
+                {/* Cliente */}
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-slate-900 truncate">
+                    {o.client ? getClientDisplayName(o.client) : "—"}
+                  </p>
+                  {o.client?.cnpj && (
+                    <p className="text-[11px] text-slate-400 font-mono truncate">{o.client.cnpj}</p>
+                  )}
+                </div>
+
+                {/* Competência */}
+                <span className="text-[13px] text-slate-600">{formatCompetence(o.competence)}</span>
+
+                {/* Vencimento */}
+                <span className="text-[13px] text-slate-600">{formatDate(o.dueDate)}</span>
+
+                {/* Valor */}
+                <span className="text-[13px] text-slate-700 font-medium">{formatCurrency(o.value)}</span>
+
+                {/* Status */}
+                <div>
+                  <Badge variant={STATUS_BADGE_VARIANT[o.status] ?? "gray"}>
+                    {STATUS_LABELS[o.status] ?? o.status}
+                  </Badge>
+                </div>
+
+                {/* Ações — IconButton do design system, sem emojis */}
+                <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  {(o.status === "PENDING" || o.status === "OVERDUE" || o.status === "IN_PROGRESS") && (
+                    <>
+                      <IconButton
+                        icon={completing === o.id ? (() => <span className="text-[11px]">…</span>) : Check}
+                        label="Concluir obrigação"
+                        onClick={() => completing !== o.id && handleComplete(o.id)}
+                        variant="success"
+                      />
+                      <IconButton
+                        icon={Pencil}
+                        label="Editar obrigação"
+                        onClick={() => setObligationToEdit(o)}
+                      />
+                      <IconButton
+                        icon={Trash2}
+                        label="Remover obrigação"
+                        variant="danger"
+                        onClick={() => handleDelete(o)}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile — lista de cards */}
+          <div className="md:hidden">
+            {loading && (
+              <div className="py-12 text-center text-[13px] text-slate-400">Carregando…</div>
+            )}
+            {!loading && filtered.length === 0 && (
+              <div className="py-12 text-center text-[13px] text-slate-400">
+                Nenhuma obrigação encontrada.
+              </div>
+            )}
+            {!loading && filtered.map((o) => (
+              <div key={o.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ObligationTypePill type={o.type} />
+                    <Badge variant={STATUS_BADGE_VARIANT[o.status] ?? "gray"}>
+                      {STATUS_LABELS[o.status] ?? o.status}
+                    </Badge>
+                  </div>
+                  <p className="text-[12px] text-slate-500 truncate">
+                    {o.client ? getClientDisplayName(o.client) : "—"} · {formatDate(o.dueDate)}
+                  </p>
+                </div>
+                {(o.status === "PENDING" || o.status === "OVERDUE" || o.status === "IN_PROGRESS") && (
+                  <IconButton icon={Check} label="Concluir" size={13} onClick={() => handleComplete(o.id)} variant="success" />
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
+
+      {/* Modal de confirmação de exclusão */}
       {obligationToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Remover obrigação</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Deseja remover <span className="font-medium text-gray-700">{obligationToDelete.type}</span> de{" "}
-              <span className="font-medium text-gray-700">{obligationToDelete.client ? getClientDisplayName(obligationToDelete.client) : "—"}</span>? Esta ação não pode ser desfeita.
+            <h3 className="text-[15px] font-semibold text-slate-900 mb-2">Remover obrigação</h3>
+            <p className="text-[13px] text-slate-500 mb-6">
+              Deseja remover{" "}
+              <span className="font-medium text-slate-700">{obligationToDelete.type}</span> de{" "}
+              <span className="font-medium text-slate-700">
+                {obligationToDelete.client ? getClientDisplayName(obligationToDelete.client) : "—"}
+              </span>
+              ? Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setObligationToDelete(null)} className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+              <button
+                onClick={() => setObligationToDelete(null)}
+                className="flex-1 px-4 py-2 text-[13px] font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
                 Cancelar
               </button>
-              <button onClick={confirmDelete} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 text-[13px] font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+              >
                 Remover
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal de criação / edição */}
       {(showModal || obligationToEdit) && (
         <ObligationModal
           obligation={obligationToEdit ?? undefined}
