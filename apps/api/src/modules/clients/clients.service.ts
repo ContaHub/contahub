@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
 import { prisma } from "@contahub/database";
 import { CreateClientDto } from "./dto/create-client.dto";
+import { CreateClientFreeDto } from "./dto/create-client-free.dto";
 import { UpdateClientDto, ListClientsDto } from "./dto/update-client.dto";
 import { JobsProducerService } from '../jobs/jobs-producer.service';
 
@@ -24,7 +25,7 @@ async create(workspaceId: string, dto: CreateClientDto) {
     const existing = await prisma.client.findUnique({ where: { workspaceId_cnpj: { workspaceId, cnpj: dto.cnpj } } });
     if (existing) throw new ConflictException("CNPJ já cadastrado");
 
-    const client = await prisma.client.create({ data: { workspaceId, ...dto } });
+    const client = await prisma.client.create({ data: { workspaceId, ...dto } as any });
 
     console.log(`[ClientsService] Cliente criado: ${client.id}`);
     console.log(`[ClientsService] portalEnabled: ${client.portalEnabled}`);
@@ -64,6 +65,47 @@ async create(workspaceId: string, dto: CreateClientDto) {
 
     return { data: client, message: "Cliente cadastrado" };
   }
+
+  async createFree(workspaceId: string, dto: CreateClientFreeDto) {
+  const client = await prisma.client.create({
+    data: {
+      workspaceId,
+      name:         dto.name,
+      tradeName:    dto.tradeName,
+      cnpj:         dto.cnpj ?? "",   // campo obrigatório no schema — string vazia quando não informado
+      taxRegime:    dto.taxRegime,
+      email:        dto.email,
+      phone:        dto.phone,
+      notes:        dto.notes,
+      portalEnabled: dto.portalEnabled,
+      portalEmail:  dto.portalEmail,
+    } as any,
+  });
+
+  console.log(`[ClientsService] Cliente (free) criado: ${client.id}`);
+
+  if (client.portalEnabled && client.portalEmail) {
+    try {
+      const workspace = await prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { slug: true, name: true, notificationChannels: true },
+      });
+      const channels = workspace?.notificationChannels ?? ["WHATSAPP"];
+      if (channels.includes("EMAIL") || channels.includes("BOTH")) {
+        await this.jobsProducer.queuePortalWelcome({
+          email: client.portalEmail,
+          recipientName: client.name,
+          workspaceName: workspace?.name ?? "ContaHub",
+          portalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010"}/portal/${workspace?.slug ?? ""}`,
+        });
+      }
+    } catch (err) {
+      console.error("[ClientsService] Erro ao enfileirar welcome email:", err);
+    }
+  }
+
+  return { data: client, message: "Cliente cadastrado" };
+}
 
   async update(workspaceId: string, id: string, dto: UpdateClientDto) {
     await this.findOne(workspaceId, id);

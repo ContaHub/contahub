@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2, Hash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Card, Badge, Button, IconButton,
@@ -15,6 +15,7 @@ import { getClients, deleteClient } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
 import { getClientDisplayName } from "@contahub/shared";
+import { ClientModalFree } from "@/components/clients/ClientModalFree";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [showFreeModal, setShowFreeModal] = useState(false);
   const [editClient, setEditClient] = useState<any>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [certClient, setCertClient] = useState<any>(null);
@@ -171,9 +173,22 @@ export default function ClientsPage() {
         title="Clientes"
         subtitle={`${clients.length} clientes cadastrados`}
         action={
-          <Button variant="primary" icon={Plus} onClick={() => { setEditClient(null); setModalOpen(true); }}>
-            Novo cliente
-          </Button>
+          <div className="relative flex">
+            <button
+              onClick={() => { setEditClient(null); setModalOpen(true); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-l-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={16} />
+              Novo Cliente
+            </button>
+            <button
+              onClick={() => setShowFreeModal(true)}
+              title="Cadastrar com identificação livre"
+              className="flex items-center px-2.5 py-2 rounded-r-lg bg-blue-600 text-white hover:bg-blue-700 border-l border-blue-500 transition-colors"
+            >
+              <Hash size={14} />
+            </button>
+          </div>
         }
       />
 
@@ -333,6 +348,16 @@ export default function ClientsPage() {
           client={editClient}
           onClose={() => setModalOpen(false)}
           onSuccess={() => { setModalOpen(false); load(); }}
+        />
+      )}
+
+      {showFreeModal && (
+        <ClientModalFree
+          onClose={() => setShowFreeModal(false)}
+          onSuccess={() => {
+            setShowFreeModal(false);
+            load(); // substitua pelo nome da função que recarrega a lista na sua página
+          }}
         />
       )}
 

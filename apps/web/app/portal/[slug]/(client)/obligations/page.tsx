@@ -305,6 +305,15 @@ const filteredObligations = obligations.filter((ob) => {
                               Aguardando confirmação
                             </span>
                           )}
+
+                          {ob.status === "COMPLETED" && ob.completedAt && (
+                            <span className="text-xs text-gray-400">
+                              {/*new Date(ob.completedAt).toLocaleTimeString("pt-BR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })*/}{new Date(ob.completedAt).toLocaleDateString("pt-BR")}
+                            </span>
+                          )}
                         </td>
                       </tr>
                   );
