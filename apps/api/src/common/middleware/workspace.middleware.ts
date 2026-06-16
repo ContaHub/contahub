@@ -23,10 +23,11 @@ export class WorkspaceMiddleware implements NestMiddleware {
 
     const pathParts = path.split("/").filter(Boolean);
     const isHealth = path.startsWith("/api/v1/health");
+    const isCnpjLookup = path.startsWith("/api/v1/cnpj/") && path.endsWith("/lookup");
     // A rota "/api/v1/portal/:slug" (comprimento 4) é pública para customizar a tela de login.
     // Qualquer sub-rota posterior (comprimento > 4) requer autenticação do cliente.
     const isPublicPortal = path.startsWith("/api/v1/portal") && pathParts.length === 4;
-    const isPublic = isHealth || isPublicPortal;
+    const isPublic = isHealth || isPublicPortal || isCnpjLookup;
 
     if (isPublic) {
       console.log(`[Middleware] PUBLIC — passando direto`);

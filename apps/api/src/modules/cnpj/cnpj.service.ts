@@ -20,7 +20,7 @@ export class CnpjService {
   private readonly logger = new Logger(CnpjService.name);
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Consulta situação cadastral de um CNPJ via BrasilAPI
+  // Consulta situação cadastral de um CNPJ via ReceitaWS
   // Salva no histórico e atualiza o campo cnpjStatus do cliente
   // ──────────────────────────────────────────────────────────────────────────
   async consultarStatus(
@@ -29,17 +29,17 @@ export class CnpjService {
     workspaceId: string,
   ): Promise<CnpjStatusResult> {
     // Remove caracteres especiais: "11.222.333/0001-44" → "11222333000144"
-    const cnpjLimpo = cnpj.replace(/\D/g, '');
+    const cnpjLimpo = cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-    this.logger.log(`Consultando CNPJ ${cnpjLimpo} via BrasilAPI`);
+    this.logger.log(`Consultando CNPJ ${cnpjLimpo} (original: ${cnpj}) via ReceitaWS`);
 
-    // Consulta a BrasilAPI — gratuita, sem autenticação, até 3 req/s
+    // Consulta a ReceitaWS — gratuita, sem autenticação, até 3 req/s
     const response = await fetch(
-      `https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`,
+      `https://receitaws.com.br/v1/cnpj/${cnpjLimpo}`,
     );
 
     if (!response.ok) {
-    if (response.status === 404 || response.status === 403) {
+    if (response.status === 400 || response.status === 404 || response.status === 403) {
         // CNPJ não encontrado ou inválido na Receita Federal
         // Salva como "NÃO ENCONTRADO" no histórico em vez de quebrar
         await prisma.cnpjConsultation.create({
@@ -70,18 +70,18 @@ export class CnpjService {
         hasAlert:    true,
         };
     }
-    throw new Error(`BrasilAPI retornou status ${response.status}`);
+    throw new Error(`ReceitaWS retornou status ${response.status}`);
     }
 
     const data = await response.json();
 
-    // BrasilAPI retorna "descricao_situacao_cadastral": "ATIVA", "INAPTA", etc.
+    // ReceitaWS retorna "descricao_situacao_cadastral": "ATIVA", "INAPTA", etc.
     const status: string = (
-      data.descricao_situacao_cadastral ?? 'DESCONHECIDA'
+      data.situacao ?? 'DESCONHECIDA'
     ).toUpperCase().trim();
 
-    const razaoSocial: string = data.razao_social ?? '';
-    const situacao:    string = data.descricao_situacao_cadastral ?? '';
+    const razaoSocial: string = data.nome ?? '';
+    const situacao:    string = data.situacao ?? '';
 
     // Salva no histórico de consultas
     await prisma.cnpjConsultation.create({
@@ -115,6 +115,52 @@ export class CnpjService {
       hasAlert:    CNPJ_ALERT_STATUSES.includes(status),
     };
   }
+
+  // Adicione após o método consultarStatus
+async lookup(cnpj: string): Promise<{
+  nome: string;
+  fantasia: string;
+  situacao: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  municipio: string;
+  uf: string;
+  cep: string;
+  simples: { optante: boolean } | null;
+  simei: { optante: boolean } | null;
+  porte: string;
+}> {
+  const cnpjLimpo = cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  this.logger.log(`Lookup CNPJ ${cnpjLimpo} via ReceitaWS`);
+
+  const response = await fetch(`https://receitaws.com.br/v1/cnpj/${cnpjLimpo}`);
+
+  if (!response.ok) {
+    throw new Error(`ReceitaWS retornou status ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (data.status === 'ERROR') {
+    throw new Error(data.message ?? 'CNPJ inválido');
+  }
+
+  return {
+    nome:        data.nome        ?? '',
+    fantasia:    data.fantasia    ?? '',
+    situacao:    data.situacao    ?? '',
+    logradouro:  data.logradouro  ?? '',
+    numero:      data.numero      ?? '',
+    complemento: data.complemento ?? '',
+    municipio:   data.municipio   ?? '',
+    uf:          data.uf          ?? '',
+    cep:         data.cep?.replace(/\D/g, '') ?? '',
+    simples:     data.simples     ?? null,
+    simei:       data.simei       ?? null,
+    porte:       data.porte       ?? '',
+  };
+}
 
   // ──────────────────────────────────────────────────────────────────────────
   // Retorna o histórico de consultas de um cliente
@@ -157,7 +203,7 @@ export class CnpjService {
 
     for (const client of clients) {
       try {
-        // Delay de 400ms entre consultas para respeitar rate limit da BrasilAPI
+        // Delay de 400ms entre consultas para respeitar rate limit da ReceitaWS
         await new Promise((res) => setTimeout(res, 400));
 
         const result = await this.consultarStatus(

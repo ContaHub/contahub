@@ -26,7 +26,7 @@ export async function consultarCnpjStatus(
   clientId: string,
   token: string,
 ): Promise<CnpjStatusResult> {
-  const cnpjLimpo = cnpj.replace(/\D/g, '');
+  const cnpjLimpo = cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   const res = await fetch(
     `${API_URL}/api/v1/cnpj/${cnpjLimpo}/status?clientId=${clientId}`,
     { headers: { Authorization: `Bearer ${token}` } },

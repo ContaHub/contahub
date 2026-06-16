@@ -15,12 +15,15 @@ const PJ_REGIMES = ["SIMPLES_NACIONAL", "LUCRO_PRESUMIDO", "LUCRO_REAL", "MEI", 
 const PF_REGIMES = ["ISENTO"];
 
 function maskCnpj(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  return digits
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
+  // Extrai só alfanuméricos do valor (mesmo que já venha formatado)
+  const raw = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 14);
+  
+  if (raw.length === 0) return "";
+  if (raw.length <= 2)  return raw;
+  if (raw.length <= 5)  return `${raw.slice(0,2)}.${raw.slice(2)}`;
+  if (raw.length <= 8)  return `${raw.slice(0,2)}.${raw.slice(2,5)}.${raw.slice(5)}`;
+  if (raw.length <= 12) return `${raw.slice(0,2)}.${raw.slice(2,5)}.${raw.slice(5,8)}/${raw.slice(8)}`;
+  return `${raw.slice(0,2)}.${raw.slice(2,5)}.${raw.slice(5,8)}/${raw.slice(8,12)}-${raw.slice(12)}`;
 }
 
 function maskCpf(value: string): string {
@@ -75,8 +78,8 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
     if (name === "cnpj") {
       setForm((prev) => ({ ...prev, cnpj: maskCnpj(value) }));
       setCnpjFound(false);
-      const digits = value.replace(/\D/g, "");
-      if (digits.length === 14) fetchCnpjData(digits);
+      const raw = value.replace(/[^a-zA-Z0-9]/g, "");
+      if (raw.length === 14) fetchCnpjData(raw);
       return;
     }
 
@@ -88,35 +91,40 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  async function fetchCnpjData(cnpj: string) {
-    setCnpjLoading(true);
-    setCnpjFound(false);
-    try {
-      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-      if (!res.ok) throw new Error("CNPJ não encontrado");
-      const data = await res.json();
+async function fetchCnpjData(cnpj: string) {
+  setCnpjLoading(true);
+  setCnpjFound(false);
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/cnpj/${cnpj}/lookup`);
+    if (!res.ok) throw new Error("CNPJ não encontrado");
+    const json = await res.json();
+    const data = json.data;
 
-      let taxRegime = "SIMPLES_NACIONAL";
-      if (data.porte === "DEMAIS") taxRegime = "LUCRO_PRESUMIDO";
-
-      setForm((prev) => ({
-        ...prev,
-        name: data.razao_social || prev.name,
-        tradeName: data.nome_fantasia || prev.tradeName,
-        taxRegime,
-        zipCode: data.cep?.replace(/\D/g, "") || prev.zipCode,
-        street: [data.logradouro, data.numero, data.complemento].filter(Boolean).join(", ") || prev.street,
-        city: data.municipio || prev.city,
-        state: data.uf || prev.state,
-      }));
-
-      setCnpjFound(true);
-    } catch {
-      setCnpjFound(false);
-    } finally {
-      setCnpjLoading(false);
+    let taxRegime = "SIMPLES_NACIONAL";
+    if (data.simei?.optante === true) {
+      taxRegime = "MEI";
+    } else if (data.simples?.optante === false) {
+      taxRegime = "LUCRO_PRESUMIDO";
     }
+
+    setForm((prev) => ({
+      ...prev,
+      name:      data.nome      || prev.name,
+      tradeName: data.fantasia  || prev.tradeName,
+      taxRegime,
+      zipCode:   data.cep       || prev.zipCode,
+      street:    [data.logradouro, data.numero, data.complemento].filter(Boolean).join(", ") || prev.street,
+      city:      data.municipio || prev.city,
+      state:     data.uf        || prev.state,
+    }));
+
+    setCnpjFound(true);
+  } catch {
+    setCnpjFound(false);
+  } finally {
+    setCnpjLoading(false);
   }
+}
 
   function handlePersonTypeChange(type: PersonType) {
     setPersonType(type);
@@ -222,7 +230,7 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
               <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ *</label>
               <div className="relative">
                 <input name="cnpj" value={form.cnpj} onChange={handleChange} required
-                  placeholder="00.000.000/0000-00"
+                  placeholder="Ex: 12.ABC.345/0001-99 ou 00.000.000/0001-00"
                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {cnpjLoading && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}

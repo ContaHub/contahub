@@ -68,4 +68,13 @@ export class CnpjController {
       message: `Varredura concluída — ${result.total} CNPJs verificados, ${result.alertas} alertas encontrados`,
     };
   }
+  // Adicione antes do fechamento da classe
+// GET /api/v1/cnpj/:cnpj/lookup
+@Get(':cnpj/lookup')
+async getLookup(
+  @Param('cnpj') cnpj: string,
+) {
+  const result = await this.cnpjService.lookup(cnpj);
+  return { data: result };
+}
 }

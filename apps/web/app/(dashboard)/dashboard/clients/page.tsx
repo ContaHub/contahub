@@ -181,13 +181,6 @@ export default function ClientsPage() {
               <Plus size={16} />
               Novo Cliente
             </button>
-            <button
-              onClick={() => setShowFreeModal(true)}
-              title="Cadastrar com identificação livre"
-              className="flex items-center px-2.5 py-2 rounded-r-lg bg-blue-600 text-white hover:bg-blue-700 border-l border-blue-500 transition-colors"
-            >
-              <Hash size={14} />
-            </button>
           </div>
         }
       />

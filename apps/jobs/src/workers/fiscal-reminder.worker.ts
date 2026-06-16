@@ -293,12 +293,13 @@ export class FiscalReminderWorker extends WorkerHost {
 
         for (const client of clients) {
           try {
-            // Delay de 400ms entre consultas — respeita rate limit da BrasilAPI
-            await new Promise((res) => setTimeout(res, 400));
+            // DEPOIS — 20s entre consultas para respeitar 3 req/min da ReceitaWS
+            await new Promise((res) => setTimeout(res, 20_000));
 
-            const cnpjLimpo = client.cnpj.replace(/\D/g, '');
-            const response  = await fetch(
-              `https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`,
+            const cnpjLimpo = client.cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            // DEPOIS
+            const response = await fetch(
+              `https://receitaws.com.br/v1/cnpj/${cnpjLimpo}`,
             );
 
             let status      = 'NAO_ENCONTRADO';
@@ -307,9 +308,11 @@ export class FiscalReminderWorker extends WorkerHost {
 
             if (response.ok) {
               const data  = await response.json();
-              status      = (data.descricao_situacao_cadastral ?? 'DESCONHECIDA').toUpperCase().trim();
-              razaoSocial = data.razao_social ?? '';
-              situacao    = data.descricao_situacao_cadastral ?? '';
+              // ReceitaWS usa "situacao" e "nome" em vez de
+              // "descricao_situacao_cadastral" e "razao_social"
+              status      = (data.situacao ?? 'DESCONHECIDA').toUpperCase().trim();
+              razaoSocial = data.nome ?? '';
+              situacao    = data.situacao ?? '';
             }
 
             await prisma.cnpjConsultation.create({
