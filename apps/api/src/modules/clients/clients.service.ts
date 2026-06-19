@@ -11,7 +11,24 @@ export class ClientsService {
 
   async findAll(workspaceId: string, { page = 1, limit = 20, search, status }: ListClientsDto) {
     const where = { workspaceId, ...(status && { status }), ...(search && { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { cnpj: { contains: search } }] }) };
-    const [data, total] = await Promise.all([prisma.client.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { name: "asc" } }), prisma.client.count({ where })]);
+    const [data, total] = await Promise.all([
+    prisma.client.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { name: "asc" },
+      select: {
+        id: true, name: true, tradeName: true, cnpj: true, cpf: true,
+        type: true, status: true, taxRegime: true,
+        email: true, phone: true, whatsapp: true,
+        portalEnabled: true, portalEmail: true,
+        cnpjStatus: true, cnpjLastChecked: true,
+        ecacAlertCount: true, ecacLastChecked: true, // ← esses dois
+        createdAt: true,
+      }
+    }),
+    prisma.client.count({ where })
+  ]);
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 

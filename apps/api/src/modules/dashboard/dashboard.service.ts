@@ -64,6 +64,10 @@ export class DashboardService {
       }),
     ]);
 
+    const ecacAlerts = await prisma.client.count({
+      where: { workspaceId, ecacAlertCount: { gt: 0 } }
+    });
+
     return {
       data: {
         activeClients,
