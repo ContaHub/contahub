@@ -234,7 +234,7 @@ export default function ClientsPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-slate-900 truncate">{getClientDisplayName(c)}</p>
-                    <p className="text-[11px] text-slate-400">{c.type === "PF" ? "Pessoa Física" : "Pessoa Jurídica"}</p>
+                    <p className="text-[11px] text-slate-400">{c.cpf && !c.cnpj ? "Pessoa Física" : "Pessoa Jurídica"}</p>
                   </div>
                 </div>
 

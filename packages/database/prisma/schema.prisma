@@ -106,6 +106,7 @@ model Workspace {
   timezone     String   @default("America/Sao_Paulo")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  trialEndsAt DateTime?  // ← adicionar aqui
 
   users          WorkspaceUser[]
   clients        Client[]

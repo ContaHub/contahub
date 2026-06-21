@@ -7,12 +7,18 @@ const prisma = new PrismaClient();
 @Injectable()
 export class WorkspaceService {
   async getSettings(workspaceId: string) {
-    const ws = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { notificationChannels: true },
-    });
+    const ws = await prisma.$queryRaw<{ notificationChannels: string[]; trialEndsAt: Date | null }[]>`
+      SELECT "notificationChannels", "trialEndsAt"
+      FROM "public"."Workspace"
+      WHERE id = ${workspaceId}
+      LIMIT 1
+    `;
+
+    const data = ws[0];
+
     return {
-      notificationChannels: ws?.notificationChannels ?? ["WHATSAPP"],
+      notificationChannels: data?.notificationChannels ?? ['WHATSAPP'],
+      trialEndsAt: data?.trialEndsAt ?? null,
     };
   }
 

@@ -21,7 +21,7 @@ async function bootstrap() {
   logger.log('╔══════════════════════════════════════╗');
   logger.log('║   ContaHub Jobs — Workers ativos     ║');
   logger.log('╠══════════════════════════════════════╣');
-  logger.log('║  FiscalReminderWorker  → ativo        ║');
+  logger.log('║  FiscalReminderWorker  → ativo       ║');
   logger.log('║  NotificationWorker   → ativo        ║');
   logger.log('║  DocumentWorker       → ativo        ║');
   logger.log('║  Bull Board           → porta 3003   ║');

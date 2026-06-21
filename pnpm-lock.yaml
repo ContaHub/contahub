@@ -22,7 +22,7 @@ importers:
     dependencies:
       '@clerk/clerk-sdk-node':
         specifier: ^5.0.0
-        version: 5.1.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.92.2)
+        version: 5.1.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.96.0)
       '@contahub/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -51,8 +51,8 @@ importers:
         specifier: ^10.3.0
         version: 10.4.22(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22)
       '@prisma/client':
-        specifier: ^7.8.0
-        version: 7.8.0(prisma@5.22.0)(typescript@5.9.3)
+        specifier: ^5.22.0
+        version: 5.22.0(prisma@5.22.0)
       '@supabase/supabase-js':
         specifier: ^2.106.0
         version: 2.106.0
@@ -86,6 +86,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      svix:
+        specifier: ^1.96.0
+        version: 1.96.0
       xml2js:
         specifier: ^0.6.2
         version: 0.6.2
@@ -967,9 +970,6 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@prisma/client-runtime-utils@7.8.0':
-    resolution: {integrity: sha512-5NQZztQ0oY/ADFkmd9gPuweH5A1/CCY8YQPorLLO0Mu6a87mY5gsnDkzmFmIHs9NFaLnZojzgddFVN4RpKYrdw==}
-
   '@prisma/client@5.22.0':
     resolution: {integrity: sha512-M0SVXfyHnQREBKxCgyo7sffrKttwE6R8PMq330MIUF0pTwjUhLbW84pFDlf06B27XyCR++VtjugEnIHdr07SVA==}
     engines: {node: '>=16.13'}
@@ -977,18 +977,6 @@ packages:
       prisma: '*'
     peerDependenciesMeta:
       prisma:
-        optional: true
-
-  '@prisma/client@7.8.0':
-    resolution: {integrity: sha512-HFp3Dawv/3sU3JtlPha90IB+48lS7zHiH4LKZPjmcE8YH5P9DOXGPvo8dqOtO7MqLDd1p2hOWMcFlRT1DMblHw==}
-    engines: {node: ^20.19 || ^22.12 || >=24.0}
-    peerDependencies:
-      prisma: '*'
-      typescript: '>=5.4.0'
-    peerDependenciesMeta:
-      prisma:
-        optional: true
-      typescript:
         optional: true
 
   '@prisma/debug@5.22.0':
@@ -3825,6 +3813,9 @@ packages:
   svix@1.92.2:
     resolution: {integrity: sha512-ZmuA3UVvlnF9EgxlzmPtF7CKjQb64Z6OFlyfdDfU0sdcC7dJa+3aOYX5B9mA+RS6ch1AxBa4UP/l6KmqfGtWBQ==}
 
+  svix@1.96.0:
+    resolution: {integrity: sha512-bypvS7RhYYysD/AAnQzV7EIM08rP9aI394VPr2LGb63K17n4hYFfZPWCpFCFs7ZhYEfdO6Rtci16zxfw14ygCg==}
+
   swr@2.3.4:
     resolution: {integrity: sha512-bYd2lrhc+VarcpkgWclcUi92wYCpOgMws9Sd1hG1ntAu0NEy+14CbotuFjshBU2kt9rYj9TSmDcybpxpeTU1fg==}
     peerDependencies:
@@ -4281,7 +4272,7 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/backend@1.34.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.92.2)':
+  '@clerk/backend@1.34.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.96.0)':
     dependencies:
       '@clerk/shared': 3.47.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@clerk/types': 4.101.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -4289,7 +4280,7 @@ snapshots:
       snakecase-keys: 8.0.1
       tslib: 2.8.1
     optionalDependencies:
-      svix: 1.92.2
+      svix: 1.96.0
     transitivePeerDependencies:
       - react
       - react-dom
@@ -4302,9 +4293,9 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       tslib: 2.4.1
 
-  '@clerk/clerk-sdk-node@5.1.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.92.2)':
+  '@clerk/clerk-sdk-node@5.1.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.96.0)':
     dependencies:
-      '@clerk/backend': 1.34.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.92.2)
+      '@clerk/backend': 1.34.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svix@1.96.0)
       '@clerk/shared': 2.22.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@clerk/types': 4.101.20(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       tslib: 2.4.1
@@ -4771,18 +4762,9 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@prisma/client-runtime-utils@7.8.0': {}
-
   '@prisma/client@5.22.0(prisma@5.22.0)':
     optionalDependencies:
       prisma: 5.22.0
-
-  '@prisma/client@7.8.0(prisma@5.22.0)(typescript@5.9.3)':
-    dependencies:
-      '@prisma/client-runtime-utils': 7.8.0
-    optionalDependencies:
-      prisma: 5.22.0
-      typescript: 5.9.3
 
   '@prisma/debug@5.22.0': {}
 
@@ -7934,6 +7916,10 @@ snapshots:
   supports-preserve-symlinks-flag@1.0.0: {}
 
   svix@1.92.2:
+    dependencies:
+      standardwebhooks: 1.0.0
+
+  svix@1.96.0:
     dependencies:
       standardwebhooks: 1.0.0
 

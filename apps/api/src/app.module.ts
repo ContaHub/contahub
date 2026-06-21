@@ -15,6 +15,7 @@ import { CnpjModule } from './modules/cnpj/cnpj.module';
 import { NfeModule } from './modules/nfe/nfe.module';
 import { CertificatesModule } from './modules/certificates/certificates.module';
 import { EcacModule } from './modules/ecac/ecac.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { EcacModule } from './modules/ecac/ecac.module';
     NfeModule,
     CertificatesModule,
     EcacModule,
+    WebhookModule,
   ],
 })
 export class AppModule {

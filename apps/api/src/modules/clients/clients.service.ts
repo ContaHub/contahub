@@ -19,11 +19,12 @@ export class ClientsService {
       orderBy: { name: "asc" },
       select: {
         id: true, name: true, tradeName: true, cnpj: true, cpf: true,
-        type: true, status: true, taxRegime: true,
+        //type: true, 
+        status: true, taxRegime: true,
         email: true, phone: true, whatsapp: true,
         portalEnabled: true, portalEmail: true,
         cnpjStatus: true, cnpjLastChecked: true,
-        ecacAlertCount: true, ecacLastChecked: true, // ← esses dois
+        ecacAlertCount: true, ecacLastChecked: true,
         createdAt: true,
       }
     }),
