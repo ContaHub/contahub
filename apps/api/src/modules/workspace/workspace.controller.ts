@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Req } from "@nestjs/common";
+import { Controller, Get, Patch, Post, Body, Req } from "@nestjs/common";
 import { WorkspaceService } from "./workspace.service";
 
 interface AuthRequest extends Request {
@@ -25,5 +25,21 @@ export class WorkspaceController {
       body.notificationChannels
     );
     return { data, message: "Configurações atualizadas" };
+  }
+
+  // ── Onboarding ────────────────────────────────────────────────────────────
+  // POST /api/v1/workspace/onboarding
+  // Chamado pela tela /onboarding após o primeiro login do contador.
+
+  @Post("onboarding")
+  async completeOnboarding(
+    @Req() req: AuthRequest,
+    @Body() body: { name: string; cnpj?: string }
+  ) {
+    const data = await this.workspaceService.completeOnboarding(
+      req.workspaceId,
+      body
+    );
+    return { data, message: "Escritório configurado com sucesso!" };
   }
 }

@@ -1,12 +1,7 @@
 /**
  * EmailService — cliente Resend para envio de e-mails transacionais
  *
- * Por que Resend?
- * - API simples com suporte nativo a React Email
- * - 3.000 e-mails/mês no plano gratuito
- * - Entregabilidade superior ao SendGrid para domínios novos
- *
- * Fluxo: NotificationWorker → EmailService.send() → Resend API → caixa do cliente
+ * Fluxo: NotificationWorker → EmailService.send() → Resend API → caixa do destinatário
  */
 import { Injectable, Logger } from "@nestjs/common";
 import { Resend } from "resend";
@@ -17,19 +12,18 @@ import type {
   DeadlineAlertPayload,
   ObligationCompletedPayload,
   PortalWelcomePayload,
+  WorkspaceWelcomePayload,
 } from "@contahub/shared";
 
 import DeadlineAlertEmail from "../emails/deadline-alert";
 import ObligationCompletedEmail from "../emails/obligation-completed";
 import PortalWelcomeEmail from "../emails/portal-welcome";
+import WorkspaceWelcomeEmail from "../emails/workspace-welcome";
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
 
-  // Lazy getter — instancia o cliente Resend apenas quando usado
-  // Garante que erro de RESEND_API_KEY ausente ocorra no momento do uso,
-  // não na inicialização do módulo
   private get resend(): Resend {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
@@ -47,8 +41,6 @@ export class EmailService {
     this.logger.log(`Enviando e-mail [${template}] para ${to}`);
 
     const { data, error } = await this.resend.emails.send({
-      // Sandbox: usar onboarding@resend.dev (funciona sem verificar domínio)
-      // Produção: trocar por noreply@seudominio.com.br após verificar no Resend
       from: process.env.RESEND_FROM_EMAIL ?? "ContaHub <onboarding@resend.dev>",
       to,
       subject,
@@ -74,7 +66,7 @@ export class EmailService {
         const p = payload as DeadlineAlertPayload;
         const subject =
           p.daysUntil === 1
-            ? `URGENTE: ${p.obligationType} de ${p.clientName} vence AMANHA`
+            ? `URGENTE: ${p.obligationType} de ${p.clientName} vence AMANHÃ`
             : `Lembrete: ${p.obligationType} de ${p.clientName} vence em ${p.daysUntil} dias`;
         const html = await render(
           React.createElement(DeadlineAlertEmail, { recipientName, payload: p })
@@ -89,7 +81,7 @@ export class EmailService {
         );
         return {
           html,
-          subject: `${p.obligationType} de ${p.clientName} foi concluida`,
+          subject: `${p.obligationType} de ${p.clientName} foi concluída`,
         };
       }
 
@@ -101,6 +93,18 @@ export class EmailService {
         return {
           html,
           subject: `Seu acesso ao portal do ${p.workspaceName} foi criado`,
+        };
+      }
+
+      // ── NOVO ─────────────────────────────────────────────────────────────
+      case "workspace-welcome": {
+        const p = payload as WorkspaceWelcomePayload;
+        const html = await render(
+          React.createElement(WorkspaceWelcomeEmail, { recipientName, payload: p })
+        );
+        return {
+          html,
+          subject: `Bem-vindo ao ContaHub! Seu escritório está pronto 🎉`,
         };
       }
 

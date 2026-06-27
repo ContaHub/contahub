@@ -16,13 +16,14 @@ export interface SendWhatsappJobData {
 export type EmailTemplate =
   | "deadline-alert"
   | "obligation-completed"
-  | "portal-welcome";
+  | "portal-welcome"
+  | "workspace-welcome";   // ← NOVO: boas-vindas ao contador após onboarding
 
 export interface SendEmailJobData {
   template: EmailTemplate;
   to: string;
   recipientName: string;
-  payload: DeadlineAlertPayload | ObligationCompletedPayload | PortalWelcomePayload;
+  payload: DeadlineAlertPayload | ObligationCompletedPayload | PortalWelcomePayload | WorkspaceWelcomePayload;
 }
 
 // ─── Payloads por template ────────────────────────────────────────────────────
@@ -48,4 +49,15 @@ export interface PortalWelcomePayload {
   workspaceName: string;
   portalUrl: string;
   temporaryPassword?: string;
+}
+
+// ── NOVO ──────────────────────────────────────────────────────────────────────
+
+export interface WorkspaceWelcomePayload {
+  /** Nome do workspace criado automaticamente pelo webhook */
+  workspaceName: string;
+  /** URL do dashboard — para o contador acessar direto pelo e-mail */
+  dashboardUrl: string;
+  /** Dias de trial restantes — calculado no momento do envio (14 por padrão) */
+  trialDays: number;
 }

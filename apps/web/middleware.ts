@@ -5,11 +5,9 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/onboarding",          // ← acessível sem redirect extra (usuário já autenticado)
   "/portal/:slug",        // Página de login do portal (pública)
 ]);
-
-// Rotas do portal do cliente — exigem auth do Clerk mas são separadas do dashboard
-const isPortalRoute = createRouteMatcher(["/portal/(.*)"]);
 
 export default clerkMiddleware((auth, request) => {
   if (!isPublicRoute(request)) {
