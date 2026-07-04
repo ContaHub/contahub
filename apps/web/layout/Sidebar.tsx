@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -15,6 +14,8 @@ import {
   Calculator,
   X,
   Menu,
+  Receipt,
+  CreditCard,
 } from "lucide-react";
 
 interface NavItemData {
@@ -27,16 +28,11 @@ interface NavItemData {
 }
 
 const NAV_MAIN: NavItemData[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/clients", label: "Clientes", icon: Users },
-  {
-    href: "/dashboard/fiscal",
-    label: "Fiscal",
-    icon: FileText,
-    badge: "2",
-    badgeVariant: "danger",
-  },
-  { href: "/dashboard/documents", label: "Documentos", icon: Files },
+  { href: "/dashboard",            label: "Dashboard",   icon: LayoutDashboard },
+  { href: "/dashboard/clients",    label: "Clientes",    icon: Users },
+  { href: "/dashboard/fiscal",     label: "Fiscal",      icon: FileText, badge: "2", badgeVariant: "danger" },
+  { href: "/dashboard/documents",  label: "Documentos",  icon: Files },
+  { href: "/dashboard/invoices",   label: "Faturas",     icon: Receipt },   // ← NOVO
 ];
 
 const NAV_COMMS: NavItemData[] = [
@@ -44,7 +40,8 @@ const NAV_COMMS: NavItemData[] = [
 ];
 
 const NAV_SYSTEM: NavItemData[] = [
-  { href: "/dashboard/settings", label: "Configurações", icon: Settings },
+  { href: "/dashboard/billing",    label: "Assinatura",   icon: CreditCard },  // ← NOVO
+  { href: "/dashboard/settings",   label: "Configurações", icon: Settings },
   {
     href: "http://localhost:3003/queues",
     label: "Filas",
@@ -67,18 +64,11 @@ interface NavItemProps {
 }
 
 function NavItem({
-  href,
-  label,
-  icon: Icon,
-  badge,
-  badgeVariant,
-  external,
-  active,
-  onClick,
+  href, label, icon: Icon, badge, badgeVariant, external, active, onClick,
 }: NavItemProps) {
   const baseClass =
     "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13.5px] transition-all duration-100 cursor-pointer select-none group";
-  const activeClass = "bg-blue-600/20 text-white";
+  const activeClass   = "bg-blue-600/20 text-white";
   const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-slate-200";
 
   const content = (
@@ -91,13 +81,11 @@ function NavItem({
       />
       <span className="flex-1 truncate">{label}</span>
       {badge && (
-        <span
-          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-            badgeVariant === "danger"
-              ? "bg-red-600 text-white"
-              : "bg-blue-400/20 text-blue-400"
-          }`}
-        >
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+          badgeVariant === "danger"
+            ? "bg-red-600 text-white"
+            : "bg-blue-400/20 text-blue-400"
+        }`}>
           {badge}
         </span>
       )}
@@ -141,10 +129,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         <div className="w-[34px] h-[34px] bg-blue-600 rounded-[9px] flex items-center justify-center flex-shrink-0">
           <Calculator size={17} className="text-white" />
         </div>
-        <span className="text-[15px] font-bold text-slate-50 tracking-tight">
-          ContaHub
-        </span>
-        {/* Close button mobile only */}
+        <span className="text-[15px] font-bold text-slate-50 tracking-tight">ContaHub</span>
         <button
           onClick={onClose}
           className="ml-auto p-1 text-slate-500 hover:text-slate-300 lg:hidden"
@@ -183,9 +168,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors">
           <UserButton afterSignOutUrl="/" />
           <div className="min-w-0">
-            <p className="text-[13px] text-slate-300 font-medium truncate leading-tight">
-              Minha conta
-            </p>
+            <p className="text-[13px] text-slate-300 font-medium truncate leading-tight">Minha conta</p>
             <p className="text-[11px] text-slate-500 truncate">Configurar perfil</p>
           </div>
         </div>
@@ -195,7 +178,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop sidebar */}
+      {/* Desktop */}
       <aside className="hidden lg:flex flex-col h-full w-56 flex-shrink-0">
         {sidebarContent}
       </aside>
@@ -203,12 +186,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       {/* Mobile overlay + drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          {/* Drawer */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
           <aside className="absolute left-0 top-0 bottom-0 w-56 flex flex-col shadow-2xl">
             {sidebarContent}
           </aside>
@@ -218,7 +196,6 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   );
 }
 
-/* Mobile header with hamburger */
 interface MobileHeaderProps {
   onMenuClick: () => void;
   title: string;
@@ -238,9 +215,7 @@ export function MobileHeader({ onMenuClick, title, subtitle, action }: MobileHea
       </button>
       <div className="ml-3 flex-1 min-w-0">
         <p className="text-[14px] font-700 text-slate-900 font-bold truncate">{title}</p>
-        {subtitle && (
-          <p className="text-[11px] text-slate-500 truncate">{subtitle}</p>
-        )}
+        {subtitle && <p className="text-[11px] text-slate-500 truncate">{subtitle}</p>}
       </div>
       {action && <div className="ml-2 flex-shrink-0">{action}</div>}
     </div>

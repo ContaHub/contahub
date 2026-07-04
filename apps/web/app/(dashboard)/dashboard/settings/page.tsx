@@ -122,7 +122,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <p className="text-[13px] font-semibold text-slate-900">WhatsApp</p>
-                    <p className="text-[12px] text-slate-500">Via elf-hosted</p>
+                    <p className="text-[12px] text-slate-500">Via self-hosted</p>
                   </div>
                 </div>
                 <Toggle enabled={whatsapp} onChange={setWhatsapp} />

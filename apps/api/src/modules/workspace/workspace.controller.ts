@@ -1,45 +1,31 @@
-import { Controller, Get, Patch, Post, Body, Req } from "@nestjs/common";
-import { WorkspaceService } from "./workspace.service";
+import { Controller, Get, Patch, Post, Body, Req } from '@nestjs/common';
+import { WorkspaceService } from './workspace.service';
 
-interface AuthRequest extends Request {
-  workspaceId: string;
-}
-
-@Controller("workspace")
+@Controller('workspace')
 export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
-  @Get("settings")
-  async getSettings(@Req() req: AuthRequest) {
-    const data = await this.workspaceService.getSettings(req.workspaceId);
-    return { data };
+  /** GET /api/v1/workspace/settings */
+  @Get('settings')
+  async getSettings(@Req() req: any) {
+    return this.workspaceService.getSettings(req.workspaceId);
   }
 
-  @Patch("settings")
-  async updateSettings(
-    @Req() req: AuthRequest,
-    @Body() body: { notificationChannels: string[] }
-  ) {
-    const data = await this.workspaceService.updateSettings(
-      req.workspaceId,
-      body.notificationChannels
-    );
-    return { data, message: "Configurações atualizadas" };
+  /** PATCH /api/v1/workspace/settings */
+  @Patch('settings')
+  async updateSettings(@Req() req: any, @Body() body: { notificationChannels: string[] }) {
+    return this.workspaceService.updateSettings(req.workspaceId, body.notificationChannels);
   }
 
-  // ── Onboarding ────────────────────────────────────────────────────────────
-  // POST /api/v1/workspace/onboarding
-  // Chamado pela tela /onboarding após o primeiro login do contador.
+  /** POST /api/v1/workspace/onboarding */
+  @Post('onboarding')
+  async completeOnboarding(@Req() req: any, @Body() body: { name: string; cnpj?: string }) {
+    return this.workspaceService.completeOnboarding(req.workspaceId, body.name, body.cnpj);
+  }
 
-  @Post("onboarding")
-  async completeOnboarding(
-    @Req() req: AuthRequest,
-    @Body() body: { name: string; cnpj?: string }
-  ) {
-    const data = await this.workspaceService.completeOnboarding(
-      req.workspaceId,
-      body
-    );
-    return { data, message: "Escritório configurado com sucesso!" };
+  /** GET /api/v1/workspace/plan — NOVO Sprint 1 */
+  @Get('plan')
+  async getPlan(@Req() req: any) {
+    return this.workspaceService.getPlan(req.workspaceId);
   }
 }

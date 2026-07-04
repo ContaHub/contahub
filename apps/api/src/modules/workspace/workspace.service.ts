@@ -1,5 +1,6 @@
-import { Injectable, Logger, BadRequestException } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaClient } from "@contahub/database";
+import { getPlanConfig, type PlanKey } from "@contahub/shared";
 
 const prisma = new PrismaClient();
 
@@ -8,11 +9,6 @@ export class WorkspaceService {
   private readonly logger = new Logger(WorkspaceService.name);
 
   async getSettings(workspaceId: string) {
-    /**
-     * $queryRaw — workaround para ts-node não reconhecer campos novos
-     * após prisma generate em monorepo pnpm.
-     * Solução permanente futura: migrar para @swc/core ou esbuild.
-     */
     const rows = await prisma.$queryRaw<
       { notificationChannels: string[]; trialEndsAt: Date | null; name: string }[]
     >`
@@ -22,20 +18,16 @@ export class WorkspaceService {
       LIMIT 1
     `;
 
-    const ws = rows[0] ?? null;
+    const ws = rows[0];
+    const needsOnboarding = ws?.name?.startsWith('Escritório de ') ?? false;
 
-    const result = {
-      notificationChannels: ws?.notificationChannels ?? ["WHATSAPP"],
-      trialEndsAt: ws?.trialEndsAt ? ws.trialEndsAt.toISOString() : null,
-      // needsOnboarding: true se o nome ainda tem o prefixo gerado pelo webhook
-      needsOnboarding: ws?.name?.startsWith("Escritório de ") ?? false,
+    return {
+      data: {
+        notificationChannels: ws?.notificationChannels ?? ['WHATSAPP'],
+        trialEndsAt: ws?.trialEndsAt ?? null,
+        needsOnboarding,
+      },
     };
-
-    this.logger.log(
-      `getSettings workspaceId=${workspaceId} | trialEndsAt=${result.trialEndsAt ?? "null"} | needsOnboarding=${result.needsOnboarding} | channels=${result.notificationChannels.join(",")}`
-    );
-
-    return result;
   }
 
   async updateSettings(workspaceId: string, notificationChannels: string[]) {
@@ -43,33 +35,68 @@ export class WorkspaceService {
       where: { id: workspaceId },
       data: { notificationChannels },
     });
-    return { notificationChannels };
+    return { data: { notificationChannels } };
   }
 
-  // ── Onboarding ────────────────────────────────────────────────────────────
-  // Chamado uma única vez após o primeiro login do contador.
-  // Atualiza o nome do workspace (e opcionalmente o CNPJ).
-
-  async completeOnboarding(
-    workspaceId: string,
-    dto: { name: string; cnpj?: string }
-  ) {
-    if (!dto.name?.trim()) {
-      throw new BadRequestException("Nome do escritório é obrigatório.");
-    }
-
+  async completeOnboarding(workspaceId: string, name: string, cnpj?: string) {
     await prisma.workspace.update({
       where: { id: workspaceId },
-      data: {
-        name: dto.name.trim(),
-        ...(dto.cnpj ? { cnpj: dto.cnpj } : {}),
-      } as any, // ts-node workaround — cnpj pode não ser reconhecido
+      data: { name, ...(cnpj ? { cnpj } : {}) },
     });
+    return { data: { name }, message: 'Workspace atualizado' };
+  }
 
-    this.logger.log(
-      `Onboarding concluído — workspaceId=${workspaceId} | name="${dto.name.trim()}"`
-    );
+  async getPlan(workspaceId: string) {
+    const rows = await prisma.$queryRaw<
+      { plan: string; status: string; trialEndsAt: string | Date | null; asaasSubscriptionId: string | null }[]
+    >`
+      SELECT plan, status, "trialEndsAt", "asaasSubscriptionId"
+      FROM "public"."Subscription"
+      WHERE "workspaceId" = ${workspaceId}
+      LIMIT 1
+    `;
 
-    return { name: dto.name.trim() };
+    const sub = rows[0];
+
+    this.logger.log(`[getPlan] workspaceId: ${workspaceId}`);
+    this.logger.log(`[getPlan] raw sub: ${JSON.stringify(sub)}`);
+    this.logger.log(`[getPlan] trialEndsAt type: ${typeof sub?.trialEndsAt}`);
+    this.logger.log(`[getPlan] trialEndsAt value: ${sub?.trialEndsAt}`);
+
+    const planKey: PlanKey = (sub?.plan as PlanKey) ?? 'STARTER';
+    const status = sub?.status ?? 'TRIAL';
+
+    let trialEndsAt: Date | null = null;
+    if (sub?.trialEndsAt) {
+      trialEndsAt = sub.trialEndsAt instanceof Date
+        ? sub.trialEndsAt
+        : new Date(sub.trialEndsAt as string);
+    }
+
+    this.logger.log(`[getPlan] trialEndsAt parsed: ${trialEndsAt}`);
+    this.logger.log(`[getPlan] Date.now(): ${new Date()}`);
+
+    let trialDaysLeft: number | null = null;
+    if (trialEndsAt) {
+      const diffMs = trialEndsAt.getTime() - Date.now();
+      this.logger.log(`[getPlan] diffMs: ${diffMs}`);
+      trialDaysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    this.logger.log(`[getPlan] trialDaysLeft: ${trialDaysLeft}`);
+
+    const config = getPlanConfig(planKey);
+
+    return {
+      data: {
+        plan: planKey,
+        status,
+        trialEndsAt: trialEndsAt?.toISOString() ?? null,
+        trialDaysLeft,
+        isTrialing: status === 'TRIAL',
+        isActive: status === 'ACTIVE',
+        config,
+      },
+    };
   }
 }

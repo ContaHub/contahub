@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   LayoutDashboard, Users, FileText, Files,
   Bell, Settings, Layers, Calculator, X,
+  Receipt, CreditCard,
 } from "lucide-react";
 
 interface NavItemData {
@@ -21,7 +22,9 @@ interface NavItemData {
 const NAV_COMMS: NavItemData[] = [
   { href: "/dashboard/notifications", label: "Notificações", icon: Bell },
 ];
+
 const NAV_SYSTEM: NavItemData[] = [
+  { href: "/dashboard/billing",          label: "Assinatura",    icon: CreditCard },        // ← NOVO
   { href: "/dashboard/settings",         label: "Configurações", icon: Settings },
   { href: "http://localhost:3003/queues", label: "Filas",         icon: Layers, external: true, badge: "↗", badgeVariant: "info" },
 ];
@@ -65,7 +68,6 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
 
-  // Busca obrigações pendentes/vencidas para o badge
   const loadBadge = useCallback(async () => {
     try {
       const token = await getToken();
@@ -79,27 +81,24 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
       const count = list.filter((o: any) => o.status === "PENDING" || o.status === "OVERDUE").length;
       setFiscalBadge(count > 0 ? String(count) : undefined);
     } catch {
-      // Silencioso — badge não é crítico
+      // Silencioso
     }
   }, [getToken, API_URL]);
 
   useEffect(() => {
     loadBadge();
-    // Atualiza o badge a cada 60 segundos
     const interval = setInterval(loadBadge, 60_000);
     return () => clearInterval(interval);
   }, [loadBadge]);
 
-  // Atualiza o badge quando sai da página fiscal (pode ter concluído obrigações)
-  useEffect(() => {
-    loadBadge();
-  }, [pathname, loadBadge]);
+  useEffect(() => { loadBadge(); }, [pathname, loadBadge]);
 
   const NAV_MAIN: NavItemData[] = [
     { href: "/dashboard",           label: "Dashboard",  icon: LayoutDashboard },
     { href: "/dashboard/clients",   label: "Clientes",   icon: Users },
     { href: "/dashboard/fiscal",    label: "Fiscal",     icon: FileText, badge: fiscalBadge, badgeVariant: "danger" },
     { href: "/dashboard/documents", label: "Documentos", icon: Files },
+    { href: "/dashboard/invoices",  label: "Faturas",    icon: Receipt },                   // ← NOVO
   ];
 
   const isActive = (href: string) =>

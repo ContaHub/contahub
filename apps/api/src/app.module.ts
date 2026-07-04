@@ -16,6 +16,8 @@ import { NfeModule } from './modules/nfe/nfe.module';
 import { CertificatesModule } from './modules/certificates/certificates.module';
 import { EcacModule } from './modules/ecac/ecac.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
+import { AsaasModule } from './modules/asaas/asaas.module';
+
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { WebhookModule } from './modules/webhook/webhook.module';
     CertificatesModule,
     EcacModule,
     WebhookModule,
+    AsaasModule,
   ],
 })
 export class AppModule {

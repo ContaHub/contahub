@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { prisma, ModuleKey } from '@contahub/database';
+import { PrismaClient } from '@contahub/database';
 import { JobsProducerService } from '../jobs/jobs-producer.service';
-import type { WorkspaceWelcomePayload } from '@contahub/shared';
+
+const prisma = new PrismaClient();
 
 const DEFAULT_MODULES = [
   'CRM', 'FISCAL', 'DOCUMENTS', 'COMMUNICATION',
@@ -14,101 +15,90 @@ export class WebhookService {
 
   constructor(private readonly jobsProducer: JobsProducerService) {}
 
-  async handleUserCreated(data: {
-    id: string;
-    email_addresses: { email_address: string }[];
-    first_name?: string;
-    last_name?: string;
-  }) {
-    const clerkUserId = data.id;
-    const email      = data.email_addresses?.[0]?.email_address ?? '';
-    const firstName  = data.first_name ?? '';
-    const lastName   = data.last_name ?? '';
-    const fullName   = [firstName, lastName].filter(Boolean).join(' ') || email.split('@')[0];
+  async handleUserCreated(event: any) {
+    const clerkUserId: string = event.data.id;
+    const email: string       = event.data.email_addresses?.[0]?.email_address ?? '';
+    const firstName: string   = event.data.first_name ?? '';
+    const lastName: string    = event.data.last_name ?? '';
+    const fullName            = [firstName, lastName].filter(Boolean).join(' ') || email.split('@')[0];
 
     this.logger.log(`Novo usuário Clerk: ${clerkUserId} — ${email}`);
 
-    // Verifica se já tem workspace (evita duplicatas em caso de reenvio do webhook)
+    // Evita duplicata
     const existing = await prisma.workspaceUser.findFirst({
       where: { clerkUserId },
     });
-
     if (existing) {
-      this.logger.warn(`Usuário ${clerkUserId} já tem workspace — ignorando`);
-      return;
+      this.logger.warn(`Workspace já existe para ${clerkUserId} — ignorando`);
+      return { ok: true, skipped: true };
     }
 
-    // Gera slug único a partir do nome/email
-    const baseSlug = fullName
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .slice(0, 30);
-    const slug = `${baseSlug}-${Date.now().toString(36)}`;
+    // Gera slug único
+    const baseSlug = `escritorio-${fullName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 30)}`;
+    const slugExists = await prisma.workspace.findUnique({ where: { slug: baseSlug } });
+    const slug = slugExists ? `${baseSlug}-${Date.now()}` : baseSlug;
 
-    // Cria workspace com trial de 14 dias
+    // Trial: +14 dias
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    // Cria Workspace
     const workspace = await prisma.workspace.create({
       data: {
-        name: `Escritório de ${fullName}`,
+        name:        `Escritório de ${fullName}`,
         slug,
-        clerkOrgId: clerkUserId,
+        clerkOrgId:  clerkUserId,
         trialEndsAt,
-      } as any,
+      },
     });
 
-    // Vincula usuário como OWNER
+    this.logger.log(`Workspace criado: ${workspace.id} (${slug})`);
+
+    // Cria WorkspaceUser como OWNER
     await prisma.workspaceUser.create({
       data: {
         workspaceId: workspace.id,
         clerkUserId,
-        role: 'OWNER',
-        isActive: true,
+        role:        'OWNER',
+        isActive:    true,
       },
     });
 
-    // Habilita todos os módulos padrão
-    for (const moduleKey of DEFAULT_MODULES) {
-      await prisma.workspaceModule.create({
-        data: {
-          workspaceId: workspace.id,
-          moduleKey: moduleKey as ModuleKey,
-          isEnabled: true,
+    // Habilita 8 módulos padrão
+    await Promise.all(
+      DEFAULT_MODULES.map((moduleKey) =>
+        prisma.workspaceModule.create({
+          data: { workspaceId: workspace.id, moduleKey: moduleKey as any, isEnabled: true },
+        }),
+      ),
+    );
+
+    // ── NOVO Sprint 1: cria Subscription TRIAL ────────────────────────────
+    await prisma.subscription.create({
+      data: {
+        workspaceId: workspace.id,
+        plan:        'STARTER',
+        status:      'TRIAL',
+        trialEndsAt,
+      },
+    });
+
+    this.logger.log(`Subscription TRIAL criada para workspace ${workspace.id}`);
+
+    // E-mail de boas-vindas
+    try {
+      await this.jobsProducer.queueEmail({
+        template:      'workspace-welcome',
+        to:            email,
+        recipientName: fullName,
+        payload: {
+          workspaceName: workspace.name,
+          portalUrl:     `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3010'}/dashboard`,
         },
       });
+    } catch (err) {
+      this.logger.warn(`Falha ao enfileirar e-mail de boas-vindas: ${err.message}`);
     }
 
-    this.logger.log(`Workspace criado: ${workspace.slug} (${workspace.id})`);
-
-    // ── E-mail de boas-vindas ao contador ─────────────────────────────────
-    // Só enfileira se tiver e-mail — nunca quebra o fluxo principal
-    if (email) {
-      try {
-        const dashboardUrl =
-          process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3010';
-
-        const trialDays = 14; // calculado no momento da criação
-
-        const welcomePayload: WorkspaceWelcomePayload = {
-          workspaceName: workspace.name,
-          dashboardUrl:  `${dashboardUrl}/dashboard`,
-          trialDays,
-        };
-
-        await this.jobsProducer.queueEmail({
-          template:      'workspace-welcome',
-          to:            email,
-          recipientName: firstName || fullName,
-          payload:       welcomePayload,
-        });
-
-        this.logger.log(`E-mail de boas-vindas enfileirado para: ${email}`);
-      } catch (err) {
-        // Falha no e-mail nunca deve impedir o onboarding
-        this.logger.error(`Erro ao enfileirar e-mail de boas-vindas: ${err.message}`);
-      }
-    }
+    return { ok: true, workspaceId: workspace.id, slug };
   }
 }
