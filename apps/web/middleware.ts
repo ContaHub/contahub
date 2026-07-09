@@ -7,6 +7,8 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/onboarding",          // ← acessível sem redirect extra (usuário já autenticado)
   "/portal/:slug",        // Página de login do portal (pública)
+  "/opengraph-image",   // ← NOVO — preview de compartilhamento (crawlers não autenticam)
+
 ]);
 
 export default clerkMiddleware((auth, request) => {

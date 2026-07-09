@@ -16,10 +16,10 @@ export class WebhookService {
   constructor(private readonly jobsProducer: JobsProducerService) {}
 
   async handleUserCreated(event: any) {
-    const clerkUserId: string = event.data.id;
-    const email: string       = event.data.email_addresses?.[0]?.email_address ?? '';
-    const firstName: string   = event.data.first_name ?? '';
-    const lastName: string    = event.data.last_name ?? '';
+    const clerkUserId: string = event.id;
+    const email: string       = event.email_addresses?.[0]?.email_address ?? '';
+    const firstName: string   = event.first_name ?? '';
+    const lastName: string    = event.last_name ?? '';
     const fullName            = [firstName, lastName].filter(Boolean).join(' ') || email.split('@')[0];
 
     this.logger.log(`Novo usuário Clerk: ${clerkUserId} — ${email}`);

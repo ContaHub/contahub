@@ -103,7 +103,18 @@ pnpm lint         # Lint em todos os packages
 pnpm db:studio    # Abre o Prisma Studio (interface visual do banco)
 pnpm db:seed      # Popula banco com dados de exemplo
 ```
+# Mata os processos nas portas (já é seu padrão documentado)
+lsof -ti:3002 | xargs kill -9 2>/dev/null
+lsof -ti:3010 | xargs kill -9 2>/dev/null
+lsof -ti:3003 | xargs kill -9 2>/dev/null
 
+pnpm dev
+
+# Encontra e mata o processo do ngrok atual
+pkill ngrok
+
+# Reinicia apontando explicitamente pra porta da API
+ngrok http 3002
 ---
 
 ## Time
