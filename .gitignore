@@ -13,3 +13,7 @@ coverage
 github-recovery-codes.txt
 *.skill
 *.sh
+*.bak
+*_bkp.*
+* copy.*
+* copy2.*
