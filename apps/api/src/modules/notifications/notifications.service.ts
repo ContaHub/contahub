@@ -105,7 +105,7 @@ export class NotificationsService {
           await prisma.communication.create({
             data: {
               workspaceId,
-              clientId: (ob as any).clientId,
+              clientId: ob.clientId,
               channel: "WHATSAPP",
               direction: "outbound",
               subject: `Alerta: ${obligationType} vence em ${daysLeft} dia(s)`,

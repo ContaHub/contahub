@@ -170,11 +170,11 @@ export default function BillingPage() {
   }, []);
 
   // Todos os planos para mostrar na tela — importados do shared via API
-  const allPlans: { key: PlanKey; config: PlanConfig }[] = planData
+  const allPlans: { key: PlanKey; config: PlanConfig | null }[] = planData
     ? [
-        { key: 'STARTER',    config: planData.plan === 'STARTER'    ? planData.config : null as any },
-        { key: 'PRO',        config: planData.plan === 'PRO'        ? planData.config : null as any },
-        { key: 'ENTERPRISE', config: planData.plan === 'ENTERPRISE' ? planData.config : null as any },
+        { key: 'STARTER',    config: planData.plan === 'STARTER'    ? planData.config : null },
+        { key: 'PRO',        config: planData.plan === 'PRO'        ? planData.config : null },
+        { key: 'ENTERPRISE', config: planData.plan === 'ENTERPRISE' ? planData.config : null },
       ]
     : [];
 

@@ -1,6 +1,6 @@
 import { Controller, Post, Delete, Get, Param, Body, Req } from '@nestjs/common';
 import { AsaasService } from './asaas.service';
-import { PrismaClient } from '@contahub/database';
+import { PrismaClient, SubscriptionPlan } from '@contahub/database';
 
 const prisma = new PrismaClient();
 
@@ -89,7 +89,7 @@ export class AsaasController {
     await prisma.subscription.upsert({
       where: { workspaceId },
       update: {
-        plan:                 body.plan as any,
+        plan:                 body.plan as SubscriptionPlan,
         status:               'ACTIVE',
         asaasCustomerId,
         asaasSubscriptionId:  asaasSub.id,
@@ -98,7 +98,7 @@ export class AsaasController {
       },
       create: {
         workspaceId,
-        plan:                 body.plan as any,
+        plan:                 body.plan as SubscriptionPlan,
         status:               'ACTIVE',
         asaasCustomerId,
         asaasSubscriptionId:  asaasSub.id,

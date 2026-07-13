@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@contahub/database';
+import { PrismaClient, ModuleKey } from '@contahub/database';
 import { JobsProducerService } from '../jobs/jobs-producer.service';
 
 const prisma = new PrismaClient();
 
-const DEFAULT_MODULES = [
+const DEFAULT_MODULES: ModuleKey[] = [
   'CRM', 'FISCAL', 'DOCUMENTS', 'COMMUNICATION',
   'CLIENT_PORTAL', 'FINANCIAL', 'BI', 'AUTOMATION',
 ];
@@ -67,7 +67,7 @@ export class WebhookService {
     await Promise.all(
       DEFAULT_MODULES.map((moduleKey) =>
         prisma.workspaceModule.create({
-          data: { workspaceId: workspace.id, moduleKey: moduleKey as any, isEnabled: true },
+          data: { workspaceId: workspace.id, moduleKey, isEnabled: true },
         }),
       ),
     );
