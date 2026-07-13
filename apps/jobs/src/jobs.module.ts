@@ -30,16 +30,18 @@ const url = new URL(REDIS_URL);
       BullModule.registerQueue(
         { name: QUEUES.FISCAL_REMINDERS },
         { name: QUEUES.NOTIFICATIONS },
-        { name: QUEUES.DOCUMENTS }
+        { name: QUEUES.DOCUMENTS },
+        { name: QUEUES.ECAC }
       ),
   ],
   providers: [
     FiscalReminderWorker,
     NotificationWorker,
     DocumentWorker,
+    EcacWorker,
     WahaClientService,
     EcacBrowserService,
-    EmailService,       // ← NOVO Sprint 2
+    EmailService,
     BullBoardModule,
   ],
 })
