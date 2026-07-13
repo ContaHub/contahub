@@ -21,6 +21,9 @@ export class BullBoardModule implements OnModuleInit {
 
     @InjectQueue(QUEUES.DOCUMENTS)
     private readonly documentsQueue: Queue,
+
+    @InjectQueue(QUEUES.ECAC)
+    private readonly ecacQueue: Queue,
   ) {}
 
   onModuleInit() {
@@ -38,6 +41,7 @@ export class BullBoardModule implements OnModuleInit {
         new BullMQAdapter(this.fiscalQueue) as any,
         new BullMQAdapter(this.notificationsQueue) as any,
         new BullMQAdapter(this.documentsQueue) as any,
+        new BullMQAdapter(this.ecacQueue) as any,
       ],
       serverAdapter,
     });
