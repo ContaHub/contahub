@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe, BadRequestException, Catch, ArgumentsHost, HttpException, ExceptionFilter, Logger } from "@nestjs/common";
 import { AppModule } from "./app.module";
@@ -62,7 +63,10 @@ async function bootstrap() {
     })
   );
 
-  app.enableCors({ origin: "http://localhost:3010", credentials: true });
+  app.enableCors({ 
+    origin: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010",
+    credentials: true 
+  });
   await app.listen(3002);
   console.log("🚀 ContaHub API rodando em http://localhost:3002/api/v1");
 }
