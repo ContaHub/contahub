@@ -1,8 +1,8 @@
-import { Processor, Process } from '@nestjs/bull';
+import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import { Job } from 'bullmq';
 import { PrismaClient } from '@prisma/client';
-import { QUEUE_NAMES, JOB_NAMES } from '../config/queues.config';
+import { QUEUES, JOB_NAMES } from '@contahub/shared';
 
 const prisma = new PrismaClient();
 
@@ -14,16 +14,27 @@ export interface ProcessUploadJobData {
 }
 
 @Injectable()
-@Processor(QUEUE_NAMES.DOCUMENTS)
-export class DocumentWorker {
+@Processor(QUEUES.DOCUMENTS)
+export class DocumentWorker extends WorkerHost {
   private readonly logger = new Logger(DocumentWorker.name);
 
-  @Process(JOB_NAMES.PROCESS_UPLOAD)
-  async processUpload(job: Job<ProcessUploadJobData>) {
+  constructor() {
+    super();
+  }
+
+  async process(job: Job): Promise<unknown> {
+    switch (job.name) {
+      case JOB_NAMES.PROCESS_UPLOAD:
+        return this.processUpload(job as Job<ProcessUploadJobData>);
+      default:
+        this.logger.warn(`Job name desconhecido: ${job.name}`);
+        return null;
+    }
+  }
+
+  private async processUpload(job: Job<ProcessUploadJobData>) {
     const { documentId, workspaceId, fileType } = job.data;
-
     this.logger.log(`Processando documento ${documentId} (${fileType})`);
-
     /**
      * Placeholder para Sprint 4:
      * - fileType === 'xml' → parsear NF-e e extrair dados
@@ -32,13 +43,8 @@ export class DocumentWorker {
      */
     await prisma.document.update({
       where: { id: documentId },
-      data: {
-        // Campo de metadata para registrar processamento
-        // Será expandido no Sprint 4 com dados extraídos do XML
-        updatedAt: new Date(),
-      },
+      data: { updatedAt: new Date() },
     });
-
     this.logger.log(`Documento ${documentId} processado`);
     return { documentId, workspaceId, processed: true };
   }

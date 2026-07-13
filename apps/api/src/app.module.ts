@@ -1,4 +1,4 @@
-import { BullModule } from '@nestjs/bull';
+import { BullModule } from '@nestjs/bullmq';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { Module, MiddlewareConsumer, RequestMethod } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
@@ -18,12 +18,16 @@ import { EcacModule } from './modules/ecac/ecac.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { AsaasModule } from './modules/asaas/asaas.module';
 
-
+const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+const redisUrl = new URL(REDIS_URL);
 @Module({
   imports: [
     // Fase 3 — BullMQ
     BullModule.forRoot({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
+      connection: {
+        host: redisUrl.hostname,
+        port: Number(redisUrl.port) || 6379,
+      },
     }),
     JobsModule,
 
