@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware, UnauthorizedException } from "@nestjs/common";
+import { Injectable, Logger, NestMiddleware, UnauthorizedException } from "@nestjs/common";
 import { Request, Response, NextFunction } from "express";
 import { clerkClient } from "@clerk/clerk-sdk-node";
 import { prisma } from "@contahub/database";
@@ -16,10 +16,11 @@ declare global {
 
 @Injectable()
 export class WorkspaceMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(WorkspaceMiddleware.name);
   async use(req: Request, _res: Response, next: NextFunction) {
     const path = req.originalUrl.split("?")[0]; // Remove query string antes de checar
 
-    console.log(`[Middleware] path: ${path}`);
+    this.logger.debug(`path: ${path}`);
 
     const pathParts = path.split("/").filter(Boolean);
     const isHealth = path.startsWith("/api/v1/health");
@@ -31,7 +32,7 @@ export class WorkspaceMiddleware implements NestMiddleware {
     const isPublic = isHealth || isPublicPortal || isCnpjLookup || isWebhook;
 
     if (isPublic) {
-      console.log(`[Middleware] PUBLIC — passando direto`);
+      this.logger.debug(`PUBLIC — passando direto: ${path}`);
       return next();
     }
 
@@ -77,7 +78,10 @@ export class WorkspaceMiddleware implements NestMiddleware {
 
       next();
     } catch (err) {
-      console.error("[Middleware] Falha na autenticação:", err);
+      this.logger.error(
+        `Falha na autenticação em ${path}: ${err instanceof Error ? err.message : String(err)}`,
+        err instanceof Error ? err.stack : undefined,
+      );
       throw new UnauthorizedException("Token inválido ou expirado");
     }
   }

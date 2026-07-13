@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, ConflictException } from "@nestjs/common";
 import { prisma } from "@contahub/database";
 import { CreateClientDto } from "./dto/create-client.dto";
 import { CreateClientFreeDto } from "./dto/create-client-free.dto";
@@ -7,6 +7,7 @@ import { JobsProducerService } from '../jobs/jobs-producer.service';
 
 @Injectable()
 export class ClientsService {
+  private readonly logger = new Logger(ClientsService.name);
   constructor(private readonly jobsProducer: JobsProducerService) {}
 
   async findAll(workspaceId: string, { page = 1, limit = 20, search, status }: ListClientsDto) {
@@ -45,9 +46,9 @@ async create(workspaceId: string, dto: CreateClientDto) {
 
     const client = await prisma.client.create({ data: { workspaceId, ...dto } as any });
 
-    console.log(`[ClientsService] Cliente criado: ${client.id}`);
-    console.log(`[ClientsService] portalEnabled: ${client.portalEnabled}`);
-    console.log(`[ClientsService] portalEmail: ${client.portalEmail}`);
+    this.logger.debug(
+      `Cliente criado: ${client.id} — portalEnabled: ${client.portalEnabled}`,
+    );
 
     if (client.portalEnabled && client.portalEmail) {
       try {
@@ -56,12 +57,14 @@ async create(workspaceId: string, dto: CreateClientDto) {
           select: { slug: true, name: true, notificationChannels: true },
         });
 
-        console.log(`[ClientsService] notificationChannels: ${JSON.stringify(workspace?.notificationChannels)}`);
+        this.logger.debug(
+          `notificationChannels do workspace ${workspaceId}: ${JSON.stringify(workspace?.notificationChannels)}`,
+        );
 
         const channels = workspace?.notificationChannels ?? ['WHATSAPP'];
         const shouldSendEmail = channels.includes('EMAIL') || channels.includes('BOTH');
 
-        console.log(`[ClientsService] shouldSendEmail: ${shouldSendEmail}`);
+        this.logger.debug(`shouldSendEmail: ${shouldSendEmail}`);
 
         if (shouldSendEmail) {
           await this.jobsProducer.queuePortalWelcome({
@@ -70,15 +73,20 @@ async create(workspaceId: string, dto: CreateClientDto) {
             workspaceName: workspace?.name ?? 'ContaHub',
             portalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3010'}/portal/${workspace?.slug ?? ''}`,
           });
-          console.log(`[ClientsService] ✓ Welcome email enfileirado para: ${client.portalEmail}`);
+          this.logger.log(`Welcome email enfileirado para o cliente ${client.id}`);
         } else {
-          console.log(`[ClientsService] ✗ E-mail não enviado — canal EMAIL não está ativo nos channels`);
+          this.logger.debug(`E-mail não enviado — canal EMAIL não ativo (cliente ${client.id})`);
         }
       } catch (emailError) {
-        console.error('[ClientsService] ✗ Erro ao enfileirar welcome email:', emailError);
+        this.logger.error(
+          `Erro ao enfileirar welcome email do cliente ${client.id}: ${emailError instanceof Error ? emailError.message : String(emailError)}`,
+          emailError instanceof Error ? emailError.stack : undefined,
+        );
       }
     } else {
-      console.log(`[ClientsService] ✗ Condição não atendida — portalEnabled=${client.portalEnabled} portalEmail=${client.portalEmail}`);
+      this.logger.debug(
+        `Portal não habilitado para o cliente ${client.id} (portalEnabled=${client.portalEnabled})`,
+      );
     }
 
     return { data: client, message: "Cliente cadastrado" };
@@ -100,7 +108,7 @@ async create(workspaceId: string, dto: CreateClientDto) {
     } as any,
   });
 
-  console.log(`[ClientsService] Cliente (free) criado: ${client.id}`);
+  this.logger.debug(`Cliente (free) criado: ${client.id}`);
 
   if (client.portalEnabled && client.portalEmail) {
     try {
@@ -118,7 +126,10 @@ async create(workspaceId: string, dto: CreateClientDto) {
         });
       }
     } catch (err) {
-      console.error("[ClientsService] Erro ao enfileirar welcome email:", err);
+      this.logger.error(
+        `Erro ao enfileirar welcome email do cliente ${client.id}: ${err instanceof Error ? err.message : String(err)}`,
+        err instanceof Error ? err.stack : undefined,
+      );
     }
   }
 
