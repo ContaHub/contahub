@@ -7,6 +7,7 @@ export interface AsaasCustomer {
   name: string;
   email: string;
   cpfCnpj?: string;
+  deleted?: boolean;
 }
 
 export interface AsaasSubscription {
@@ -50,7 +51,7 @@ export class AsaasService {
   }
 
   private async request<T>(
-    method: 'GET' | 'POST' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,
     body?: object,
   ): Promise<T> {
@@ -93,6 +94,15 @@ export class AsaasService {
     return res.data?.[0] ?? null;
   }
 
+  async getCustomer(customerId: string): Promise<AsaasCustomer | null> {
+    try {
+      const customer = await this.request<AsaasCustomer>('GET', `/customers/${customerId}`);
+      return customer.deleted ? null : customer;
+    } catch {
+      return null;
+    }
+  }
+
   // ── Subscriptions ─────────────────────────────────────────────────────────
 
   async createSubscription(params: {
@@ -131,6 +141,14 @@ export class AsaasService {
 
   async getSubscription(asaasSubscriptionId: string): Promise<AsaasSubscription> {
     return this.request<AsaasSubscription>('GET', `/subscriptions/${asaasSubscriptionId}`);
+  }
+
+  async updateSubscription(
+    asaasSubscriptionId: string,
+    params: { value: number; description?: string },
+  ): Promise<AsaasSubscription> {
+    this.logger.log(`Atualizando subscription Asaas: ${asaasSubscriptionId} — novo valor: ${params.value}`);
+    return this.request<AsaasSubscription>('PUT', `/subscriptions/${asaasSubscriptionId}`, params);
   }
 
   // ── Payments ──────────────────────────────────────────────────────────────

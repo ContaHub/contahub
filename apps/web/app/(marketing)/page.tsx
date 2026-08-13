@@ -11,10 +11,14 @@ import {
   UserCheck,
   ArrowRight,
   Sparkles,
+  Check,
 } from "lucide-react";
+import { PLANS, type PlanKey } from "@contahub/shared";
+
+
+
 
 // ── Benefícios — cores reaproveitadas do padrão já usado em RegimePill/CnpjStatusBadge ──
-
 const BENEFITS = [
   {
     icon: Users,
@@ -185,6 +189,76 @@ export default function LandingPage() {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── Planos — preços "em breve" até serem definidos em plans.config.ts ── */}
+      <section id="planos" className="bg-slate-50/70 border-y border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+              Planos para todo tamanho de escritório
+            </h2>
+            <p className="text-slate-500 mt-3">
+              Comece grátis com 14 dias de teste. Sem cartão de crédito.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {(Object.keys(PLANS) as PlanKey[]).map((key) => {
+              const plan = PLANS[key];
+              return (
+                <div
+                  key={key}
+                  className={`relative rounded-2xl border-2 p-6 flex flex-col bg-white transition-all ${
+                    plan.highlighted
+                      ? "border-blue-600 shadow-md"
+                      : "border-slate-200"
+                  }`}
+                >
+                  {plan.highlighted && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                        Recomendado
+                      </span>
+                    </div>
+                  )}
+
+                  <h3 className="text-[15px] font-bold text-slate-900">{plan.name}</h3>
+                  <p className="text-[12px] text-slate-500 mb-4">{plan.description}</p>
+
+                  <p className="text-[28px] font-extrabold text-slate-900 mb-1">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(plan.priceMonthly / 100)}
+                    <span className="text-[13px] font-normal text-slate-400">/mês</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mb-5">
+                    {plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes`}
+                    {" · "}
+                    {plan.maxUsers === -1 ? "Usuários ilimitados" : `Até ${plan.maxUsers} usuários`}
+                  </p>
+
+                  <ul className="space-y-2 flex-1 mb-6">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-[13px] text-slate-700">
+                        <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
+                    <button className={`w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                      plan.highlighted
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}>
+                      Começar grátis
+                    </button>
+                  </SignUpButton>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 

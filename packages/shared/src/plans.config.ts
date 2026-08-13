@@ -17,6 +17,7 @@ export interface PlanConfig {
   features: string[];     // lista de features para exibição
   modules: string[];      // ModuleKeys habilitados no plano
   highlighted: boolean;   // destaque na tela de billing (plano recomendado)
+  pricingDefined: boolean;  // ← novo — true quando o valor for o real de produção
 }
 
 export const PLANS: Record<PlanKey, PlanConfig> = {
@@ -24,8 +25,10 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     key: 'STARTER',
     name: 'Básico',
     description: 'Para escritórios em crescimento',
-    priceMonthly: 0,
+    //priceMonthly: 0,
+    priceMonthly: 500,  // TEMPORÁRIO — teste de fluxo Asaas — reverter para 0 depois
     priceYearly: 0,
+    pricingDefined: true,    
     maxClients: 15,
     maxUsers: 2,
     features: [
@@ -43,8 +46,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     key: 'PRO',
     name: 'Pro',
     description: 'Para escritórios estabelecidos',
-    priceMonthly: 0,
+    priceMonthly: 1000,  // R$ 10,00
     priceYearly: 0,
+    pricingDefined: true,
     maxClients: 60,
     maxUsers: 5,
     features: [
@@ -64,8 +68,9 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     key: 'ENTERPRISE',
     name: 'Enterprise',
     description: 'Para grandes escritórios',
-    priceMonthly: 0,
+    priceMonthly: 1500,  // R$ 15,00
     priceYearly: 0,
+    pricingDefined: true,
     maxClients: -1,
     maxUsers: -1,
     features: [

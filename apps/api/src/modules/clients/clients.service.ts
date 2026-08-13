@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, ConflictException } from "@nestjs/common";
 import { prisma } from "@contahub/database";
 import { CreateClientDto } from "./dto/create-client.dto";
-import { CreateClientFreeDto } from "./dto/create-client-free.dto";
+//import { CreateClientFreeDto } from "./dto/create-client-free.dto";
 import { UpdateClientDto, ListClientsDto } from "./dto/update-client.dto";
 import { JobsProducerService } from '../jobs/jobs-producer.service';
 
@@ -91,7 +91,7 @@ async create(workspaceId: string, dto: CreateClientDto) {
 
     return { data: client, message: "Cliente cadastrado" };
   }
-
+/*
   async createFree(workspaceId: string, dto: CreateClientFreeDto) {
   const client = await prisma.client.create({
     data: {
@@ -135,7 +135,7 @@ async create(workspaceId: string, dto: CreateClientDto) {
 
   return { data: client, message: "Cliente cadastrado" };
 }
-
+*/
   async update(workspaceId: string, id: string, dto: UpdateClientDto) {
     await this.findOne(workspaceId, id);
     return { data: await prisma.client.update({ where: { id }, data: dto }), message: "Cliente atualizado" };

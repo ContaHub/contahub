@@ -26,7 +26,7 @@ export class WebhookAsaasController {
   ) {
     // Validação simples por token fixo — Asaas envia no header
     const expectedToken = process.env.ASAAS_WEBHOOK_TOKEN;
-    if (expectedToken && token !== expectedToken) {
+    if (!expectedToken || token !== expectedToken) {
       this.logger.warn('Webhook Asaas rejeitado — token inválido');
       return res.status(401).json({ error: 'Unauthorized' });
     }

@@ -5,7 +5,7 @@ import { ModuleKey } from "@contahub/database";
 import { ClientsService } from "./clients.service";
 import { CreateClientDto } from "./dto/create-client.dto";
 import { UpdateClientDto, ListClientsDto } from "./dto/update-client.dto";
-import { CreateClientFreeDto } from "./dto/create-client-free.dto";
+//import { CreateClientFreeDto } from "./dto/create-client-free.dto";
 
 @Controller("clients")
 @UseGuards(ModuleGuard(ModuleKey.CRM))
@@ -16,13 +16,13 @@ export class ClientsController {
   @Post() @HttpCode(HttpStatus.CREATED) create(@Req() req: Request, @Body() dto: CreateClientDto) { return this.clientsService.create(req.workspaceId, dto); }
   @Put(":id") update(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateClientDto) { return this.clientsService.update(req.workspaceId, id, dto); }
   @Delete(":id") @HttpCode(HttpStatus.NO_CONTENT) remove(@Req() req: Request, @Param("id") id: string) { return this.clientsService.remove(req.workspaceId, id); }
-  @Post("free")
+  /*@Post("free")
   async createFree(
     @Body() dto: CreateClientFreeDto,
     @Req() req: any,
   ) {
     return this.clientsService.createFree(req.workspaceId, dto);
-  }
+  }*/
 }
 
 // PATCH /api/v1/clients/:id/portal — habilita/desabilita portal do cliente

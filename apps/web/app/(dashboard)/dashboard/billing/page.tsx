@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Zap, Building2, Rocket, CreditCard, Clock } from "lucide-react";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, ConfirmModal } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
+import { useAuth } from "@clerk/nextjs";
 import type { PlanConfig, PlanKey } from "@contahub/shared";
+import { PLANS } from "@contahub/shared";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -59,11 +61,13 @@ function PlanCard({
   config,
   isCurrent,
   highlighted,
+  onSelectPlan,
 }: {
   planKey: PlanKey;
   config: PlanConfig;
   isCurrent: boolean;
   highlighted: boolean;
+  onSelectPlan: (key: PlanKey) => void;
 }) {
   const Icon = PLAN_ICONS[planKey];
 
@@ -142,10 +146,10 @@ function PlanCard({
         </div>
       ) : (
         <button
-          disabled
-          className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-400 text-[13px] font-medium cursor-not-allowed"
+          onClick={() => onSelectPlan(planKey)}
+          className="w-full py-2.5 rounded-xl border border-blue-200 text-blue-700 text-[13px] font-semibold hover:bg-blue-50 transition-colors"
         >
-          Em breve
+          Alterar plano
         </button>
       )}
     </div>
@@ -157,9 +161,13 @@ function PlanCard({
 export default function BillingPage() {
   const openMenu = useMobileMenu();
   const router   = useRouter();
+  const { getToken } = useAuth();
 
-  const [planData, setPlanData]   = useState<PlanData | null>(null);
-  const [loading, setLoading]     = useState(true);
+  const [planData, setPlanData]       = useState<PlanData | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [pendingPlan, setPendingPlan] = useState<PlanKey | null>(null);
+  const [switching, setSwitching]     = useState(false);
+  const [switchError, setSwitchError] = useState("");
 
   useEffect(() => {
     fetch('/api/workspace/plan')
@@ -169,14 +177,36 @@ export default function BillingPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Todos os planos para mostrar na tela — importados do shared via API
-  const allPlans: { key: PlanKey; config: PlanConfig | null }[] = planData
-    ? [
-        { key: 'STARTER',    config: planData.plan === 'STARTER'    ? planData.config : null },
-        { key: 'PRO',        config: planData.plan === 'PRO'        ? planData.config : null },
-        { key: 'ENTERPRISE', config: planData.plan === 'ENTERPRISE' ? planData.config : null },
-      ]
-    : [];
+  async function confirmSwitchPlan() {
+    if (!pendingPlan) return;
+    setSwitching(true);
+    setSwitchError("");
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/asaas/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ planKey: pendingPlan, billingType: 'PIX' }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Erro ao trocar de plano');
+
+      // Recarrega o plano atual após a troca
+      const planRes = await fetch('/api/workspace/plan');
+      const planJson = await planRes.json();
+      setPlanData(planJson.data);
+      setPendingPlan(null);
+    } catch (err: any) {
+      setSwitchError(err.message || 'Erro ao trocar de plano');
+    } finally {
+      setSwitching(false);
+    }
+  }
+
+  const today = new Date();
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -212,25 +242,52 @@ export default function BillingPage() {
             </div>
 
             {/* Cards de planos — busca configs via API route */}
-            <PlansGrid currentPlan={planData.plan} currentConfig={planData.config} />
+            <PlansGrid
+              currentPlan={planData.plan}
+              currentConfig={planData.config}
+              onSelectPlan={setPendingPlan}
+            />
 
             {/* Card informativo */}
             <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-5">
               <p className="text-[13px] font-semibold text-slate-700 mb-1">Precisa de ajuda?</p>
               <p className="text-[12px] text-slate-500">
-                Os planos pagos estarão disponíveis em breve. Durante o trial você tem acesso a todos os recursos.
-                Em caso de dúvidas, entre em contato pelo suporte.
+                Durante o trial você tem acesso a todos os recursos. Em caso de dúvidas, entre em contato pelo suporte.
               </p>
             </div>
           </>
         )}
       </div>
+
+      {/* Modal de confirmação de troca de plano — fica no BillingPage, não no PlansGrid */}
+      {pendingPlan && (
+        <ConfirmModal
+          title="Trocar de plano"
+          message={
+            switchError
+              ? switchError
+              : `O valor de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(PLANS[pendingPlan].priceMonthly / 100)}/mês (plano ${PLANS[pendingPlan].name}) será cobrado a partir do próximo ciclo.`
+          }
+          confirmLabel={switching ? "Alterando..." : "Confirmar troca"}
+          confirmVariant="primary"
+          onConfirm={confirmSwitchPlan}
+          onCancel={() => { setPendingPlan(null); setSwitchError(""); }}
+        />
+      )}
     </div>
   );
 }
 
 // Componente separado que busca todos os planos via API route
-function PlansGrid({ currentPlan, currentConfig }: { currentPlan: PlanKey; currentConfig: PlanConfig }) {
+function PlansGrid({
+  currentPlan,
+  currentConfig,
+  onSelectPlan,
+}: {
+  currentPlan: PlanKey;
+  currentConfig: PlanConfig;
+  onSelectPlan: (key: PlanKey) => void;
+}) {
   const [plans, setPlans] = useState<Record<PlanKey, PlanConfig> | null>(null);
 
   useEffect(() => {
@@ -259,6 +316,7 @@ function PlansGrid({ currentPlan, currentConfig }: { currentPlan: PlanKey; curre
           config={plans[key]}
           isCurrent={currentPlan === key}
           highlighted={plans[key].highlighted}
+          onSelectPlan={onSelectPlan}
         />
       ))}
     </div>

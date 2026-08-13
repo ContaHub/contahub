@@ -15,7 +15,7 @@ import { getClients, deleteClient } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
 import { getClientDisplayName } from "@contahub/shared";
-import { ClientModalFree } from "@/components/clients/ClientModalFree";
+//import { ClientModalFree } from "@/components/clients/ClientModalFree";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [showFreeModal, setShowFreeModal] = useState(false);
+//  const [showFreeModal, setShowFreeModal] = useState(false);
   const [editClient, setEditClient] = useState<any>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [certClient, setCertClient] = useState<any>(null);
@@ -176,8 +176,8 @@ export default function ClientsPage() {
           <div className="relative flex">
             <button
               onClick={() => { setEditClient(null); setModalOpen(true); }}
-              className="flex items-center gap-2 px-4 py-2 rounded-l-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
               <Plus size={16} />
               Novo Cliente
             </button>
@@ -344,7 +344,7 @@ export default function ClientsPage() {
         />
       )}
 
-      {showFreeModal && (
+      {/*showFreeModal && (
         <ClientModalFree
           onClose={() => setShowFreeModal(false)}
           onSuccess={() => {
@@ -352,7 +352,7 @@ export default function ClientsPage() {
             load(); // substitua pelo nome da função que recarrega a lista na sua página
           }}
         />
-      )}
+      )*/}
 
       {certClient && (
         <CertificateModal

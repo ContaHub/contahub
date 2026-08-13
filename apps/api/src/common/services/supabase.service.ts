@@ -32,6 +32,11 @@ export class SupabaseService {
 
     if (error) {
       this.logger.error(`Upload falhou: ${error.message}`);
+      this.logger.error(`Nome do erro: ${error.name}`);
+      // @ts-ignore — cause pode não estar tipado no SDK, mas costuma existir em erros de fetch
+      const cause = (error as any).cause;
+      this.logger.error(`Causa raiz: ${cause?.message ?? 'sem causa capturada'}`);
+      this.logger.error(`Causa completa: ${JSON.stringify(cause, Object.getOwnPropertyNames(cause || {}))}`);
       return null;
     }
 
