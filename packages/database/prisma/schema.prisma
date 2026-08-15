@@ -29,6 +29,7 @@ enum SubscriptionStatus {
   TRIAL
   ACTIVE
   PAST_DUE
+  CANCELING
   CANCELED
   SUSPENDED
 }

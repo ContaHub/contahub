@@ -14,6 +14,9 @@ declare global {
   }
 }
 
+const WRITE_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
+const BLOCKED_STATUSES = ["CANCELING", "CANCELED"];
+
 @Injectable()
 export class WorkspaceMiddleware implements NestMiddleware {
   private readonly logger = new Logger(WorkspaceMiddleware.name);
@@ -74,7 +77,20 @@ export class WorkspaceMiddleware implements NestMiddleware {
 
       req.clerkUserId = clerkUserId;
       req.workspaceId = workspaceUser.workspaceId;
-      req.userRole = workspaceUser.role;
+      
+      
+            const isAsaasSubscribeRoute = path === "/api/v1/asaas/subscribe";
+      if (WRITE_METHODS.includes(req.method) && !isAsaasSubscribeRoute) {
+        const subscription = await prisma.subscription.findUnique({
+          where: { workspaceId: workspaceUser.workspaceId },
+          select: { status: true },
+        });
+        if (subscription && BLOCKED_STATUSES.includes(subscription.status)) {
+          throw new UnauthorizedException(
+            "Sua assinatura foi cancelada. Reative o plano em Assinatura para voltar a criar ou editar registros."
+          );
+        }
+      }
 
       next();
     } catch (err) {
@@ -82,6 +98,11 @@ export class WorkspaceMiddleware implements NestMiddleware {
         `Falha na autenticação em ${path}: ${err instanceof Error ? err.message : String(err)}`,
         err instanceof Error ? err.stack : undefined,
       );
+      // Se já é um erro intencional nosso (ex: bloqueio por assinatura
+      // cancelada), preserva a mensagem original em vez de sobrescrever.
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
       throw new UnauthorizedException("Token inválido ou expirado");
     }
   }

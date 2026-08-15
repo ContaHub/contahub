@@ -187,14 +187,16 @@ export class AsaasController {
       throw new Error('Nenhuma assinatura ativa encontrada');
     }
 
-    await this.asaasService.cancelSubscription(sub.asaasSubscriptionId);
 
     await prisma.subscription.update({
       where: { workspaceId: req.workspaceId },
-      data:  { status: 'CANCELED', canceledAt: new Date() },
+      data:  { status: 'CANCELING', canceledAt: new Date() },
     });
 
-    return { data: null, message: 'Assinatura cancelada' };
+    return { data: null, message: sub.currentPeriodEnd
+      ? `Cancelamento agendado. Você mantém acesso completo até ${sub.currentPeriodEnd.toLocaleDateString('pt-BR')}.`
+      : 'Cancelamento agendado. Seu acesso será mantido até o fim do período atual.',
+     };
   }
 
   /**

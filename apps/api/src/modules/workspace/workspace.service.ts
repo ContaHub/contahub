@@ -48,9 +48,10 @@ export class WorkspaceService {
 
   async getPlan(workspaceId: string) {
     const rows = await prisma.$queryRaw<
-      { plan: string; status: string; trialEndsAt: string | Date | null; asaasSubscriptionId: string | null }[]
+      { plan: string; status: string; trialEndsAt: string | Date | null; asaasSubscriptionId: string | null; currentPeriodEnd: string | Date | null }[]
+
     >`
-      SELECT plan, status, "trialEndsAt", "asaasSubscriptionId"
+      SELECT plan, status, "trialEndsAt", "asaasSubscriptionId", "currentPeriodEnd"
       FROM "public"."Subscription"
       WHERE "workspaceId" = ${workspaceId}
       LIMIT 1
@@ -65,6 +66,13 @@ export class WorkspaceService {
 
     const planKey: PlanKey = (sub?.plan as PlanKey) ?? 'STARTER';
     const status = sub?.status ?? 'TRIAL';
+
+    let currentPeriodEnd: Date | null = null;
+    if (sub?.currentPeriodEnd) {
+      currentPeriodEnd = sub.currentPeriodEnd instanceof Date
+      ? sub.currentPeriodEnd
+      : new Date(sub.currentPeriodEnd as string);
+    }
 
     let trialEndsAt: Date | null = null;
     if (sub?.trialEndsAt) {
@@ -95,6 +103,7 @@ export class WorkspaceService {
         trialDaysLeft,
         isTrialing: status === 'TRIAL',
         isActive: status === 'ACTIVE',
+        currentPeriodEnd: currentPeriodEnd?.toISOString() ?? null,
         config,
       },
     };

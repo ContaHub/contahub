@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Zap, Building2, Rocket, CreditCard, Clock } from "lucide-react";
+import { Check, Zap, Building2, Rocket, CreditCard, Clock, AlertTriangle } from "lucide-react";
 import { PageHeader, ConfirmModal } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { useAuth } from "@clerk/nextjs";
-import type { PlanConfig, PlanKey } from "@contahub/shared";
 import { PLANS } from "@contahub/shared";
+import type { PlanConfig, PlanKey } from "@contahub/shared";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -18,6 +18,7 @@ interface PlanData {
   trialDaysLeft: number | null;
   isTrialing: boolean;
   isActive: boolean;
+  currentPeriodEnd: string | null;
   config: PlanConfig;
 }
 
@@ -28,6 +29,11 @@ const PLAN_ICONS: Record<PlanKey, React.ElementType> = {
   PRO:        Zap,
   ENTERPRISE: Building2,
 };
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
 
 function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | null }) {
   if (status === 'TRIAL') {
@@ -46,6 +52,21 @@ function StatusBadge({ status, daysLeft }: { status: string; daysLeft: number | 
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
         <Check size={11} />
         Ativo
+      </span>
+    );
+  }
+  if (status === 'CANCELING') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+        <AlertTriangle size={11} />
+        Cancelamento agendado
+      </span>
+    );
+  }
+  if (status === 'CANCELED') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+        Cancelado
       </span>
     );
   }
@@ -79,7 +100,6 @@ function PlanCard({
         ? 'border-slate-300 bg-white shadow-sm'
         : 'border-slate-200 bg-white'
     }`}>
-      {/* Badge destaque */}
       {highlighted && !isCurrent && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <span className="bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
@@ -88,7 +108,6 @@ function PlanCard({
         </div>
       )}
 
-      {/* Badge plano atual */}
       {isCurrent && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <span className="bg-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
@@ -97,7 +116,6 @@ function PlanCard({
         </div>
       )}
 
-      {/* Header do card */}
       <div className="flex items-center gap-3 mb-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
           isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
@@ -110,7 +128,6 @@ function PlanCard({
         </div>
       </div>
 
-      {/* Preço */}
       <div className="mb-5">
         <p className="text-[28px] font-extrabold text-slate-900">
           {config.priceMonthly === 0 ? (
@@ -129,7 +146,6 @@ function PlanCard({
         </p>
       </div>
 
-      {/* Features */}
       <ul className="space-y-2 flex-1 mb-6">
         {config.features.map((f) => (
           <li key={f} className="flex items-start gap-2 text-[13px] text-slate-700">
@@ -139,7 +155,6 @@ function PlanCard({
         ))}
       </ul>
 
-      {/* CTA */}
       {isCurrent ? (
         <div className="w-full py-2.5 rounded-xl bg-blue-600/10 text-blue-700 text-[13px] font-semibold text-center">
           Plano atual
@@ -169,12 +184,20 @@ export default function BillingPage() {
   const [switching, setSwitching]     = useState(false);
   const [switchError, setSwitchError] = useState("");
 
-  useEffect(() => {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [canceling, setCanceling]             = useState(false);
+  const [cancelError, setCancelError]         = useState("");
+
+  const loadPlan = () => {
     fetch('/api/workspace/plan')
       .then((r) => r.json())
       .then((json) => setPlanData(json.data))
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadPlan();
   }, []);
 
   async function confirmSwitchPlan() {
@@ -194,10 +217,7 @@ export default function BillingPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || 'Erro ao trocar de plano');
 
-      // Recarrega o plano atual após a troca
-      const planRes = await fetch('/api/workspace/plan');
-      const planJson = await planRes.json();
-      setPlanData(planJson.data);
+      loadPlan();
       setPendingPlan(null);
     } catch (err: any) {
       setSwitchError(err.message || 'Erro ao trocar de plano');
@@ -206,7 +226,28 @@ export default function BillingPage() {
     }
   }
 
-  const today = new Date();
+  async function confirmCancelSubscription() {
+    setCanceling(true);
+    setCancelError("");
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/asaas/subscribe', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Erro ao cancelar assinatura');
+
+      loadPlan();
+      setShowCancelModal(false);
+    } catch (err: any) {
+      setCancelError(err.message || 'Erro ao cancelar assinatura');
+    } finally {
+      setCanceling(false);
+    }
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -241,6 +282,23 @@ export default function BillingPage() {
               <StatusBadge status={planData.status} daysLeft={planData.trialDaysLeft} />
             </div>
 
+            {/* Aviso de cancelamento agendado */}
+            {planData.status === 'CANCELING' && (
+              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[13px] font-semibold text-amber-800">
+                    Sua assinatura será cancelada
+                    {planData.currentPeriodEnd ? ` em ${formatDate(planData.currentPeriodEnd)}` : ''}.
+                  </p>
+                  <p className="text-[12px] text-amber-700 mt-0.5">
+                    Você mantém acesso de visualização às suas telas até lá, mas não é mais possível
+                    criar, editar ou excluir registros. Para reativar, escolha um plano abaixo.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Cards de planos — busca configs via API route */}
             <PlansGrid
               currentPlan={planData.plan}
@@ -255,11 +313,23 @@ export default function BillingPage() {
                 Durante o trial você tem acesso a todos os recursos. Em caso de dúvidas, entre em contato pelo suporte.
               </p>
             </div>
+
+            {/* Cancelar assinatura — só aparece com plano ativo de verdade */}
+            {planData.status === 'ACTIVE' && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowCancelModal(true)}
+                  className="text-[12px] text-slate-400 hover:text-red-600 transition-colors underline"
+                >
+                  Cancelar assinatura
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      {/* Modal de confirmação de troca de plano — fica no BillingPage, não no PlansGrid */}
+      {/* Modal de confirmação de troca de plano */}
       {pendingPlan && (
         <ConfirmModal
           title="Trocar de plano"
@@ -272,6 +342,22 @@ export default function BillingPage() {
           confirmVariant="primary"
           onConfirm={confirmSwitchPlan}
           onCancel={() => { setPendingPlan(null); setSwitchError(""); }}
+        />
+      )}
+
+      {/* Modal de confirmação de cancelamento */}
+      {showCancelModal && (
+        <ConfirmModal
+          title="Cancelar assinatura"
+          message={
+            cancelError
+              ? cancelError
+              : "Você continuará com acesso de visualização até o fim do período já pago. Após essa data, não será mais possível criar, editar ou excluir registros até reativar um plano. Deseja continuar?"
+          }
+          confirmLabel={canceling ? "Cancelando..." : "Confirmar cancelamento"}
+          confirmVariant="danger"
+          onConfirm={confirmCancelSubscription}
+          onCancel={() => { setShowCancelModal(false); setCancelError(""); }}
         />
       )}
     </div>

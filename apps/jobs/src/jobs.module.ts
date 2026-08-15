@@ -9,6 +9,7 @@ import { WahaClientService } from "./services/waha-client.service";
 import { EmailService } from "./services/email.service";
 import { BullBoardModule } from "./workers/bull-board.module";
 import { EcacWorker } from './workers/ecac.worker';
+import { SubscriptionWorker } from './workers/subscription.worker';
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const url = new URL(REDIS_URL);
@@ -41,6 +42,7 @@ const url = new URL(REDIS_URL);
     EcacWorker,
     WahaClientService,
     EcacBrowserService,
+    SubscriptionWorker,
     EmailService,
     BullBoardModule,
   ],
