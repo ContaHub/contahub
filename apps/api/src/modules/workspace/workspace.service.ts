@@ -59,10 +59,10 @@ export class WorkspaceService {
 
     const sub = rows[0];
 
-    this.logger.log(`[getPlan] workspaceId: ${workspaceId}`);
-    this.logger.log(`[getPlan] raw sub: ${JSON.stringify(sub)}`);
-    this.logger.log(`[getPlan] trialEndsAt type: ${typeof sub?.trialEndsAt}`);
-    this.logger.log(`[getPlan] trialEndsAt value: ${sub?.trialEndsAt}`);
+    //this.logger.log(`[getPlan] workspaceId: ${workspaceId}`);
+    //this.logger.log(`[getPlan] raw sub: ${JSON.stringify(sub)}`);
+    //this.logger.log(`[getPlan] trialEndsAt type: ${typeof sub?.trialEndsAt}`);
+    //this.logger.log(`[getPlan] trialEndsAt value: ${sub?.trialEndsAt}`);
 
     const planKey: PlanKey = (sub?.plan as PlanKey) ?? 'STARTER';
     const status = sub?.status ?? 'TRIAL';
@@ -81,17 +81,17 @@ export class WorkspaceService {
         : new Date(sub.trialEndsAt as string);
     }
 
-    this.logger.log(`[getPlan] trialEndsAt parsed: ${trialEndsAt}`);
-    this.logger.log(`[getPlan] Date.now(): ${new Date()}`);
+    //this.logger.log(`[getPlan] trialEndsAt parsed: ${trialEndsAt}`);
+    //this.logger.log(`[getPlan] Date.now(): ${new Date()}`);
 
     let trialDaysLeft: number | null = null;
     if (trialEndsAt) {
       const diffMs = trialEndsAt.getTime() - Date.now();
-      this.logger.log(`[getPlan] diffMs: ${diffMs}`);
+      //this.logger.log(`[getPlan] diffMs: ${diffMs}`);
       trialDaysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     }
 
-    this.logger.log(`[getPlan] trialDaysLeft: ${trialDaysLeft}`);
+    //this.logger.log(`[getPlan] trialDaysLeft: ${trialDaysLeft}`);
 
     const config = getPlanConfig(planKey);
 
