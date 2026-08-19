@@ -16,6 +16,7 @@ import { JobsController } from './jobs.controller';
       { name: QUEUES.NOTIFICATIONS },
       { name: QUEUES.DOCUMENTS },
       { name: QUEUES.ECAC },
+      { name: QUEUES.CNPJ_SCAN },
     ),
   ],
   providers: [JobsProducerService],

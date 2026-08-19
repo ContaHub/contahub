@@ -7,12 +7,14 @@ export const QUEUES = {
   NOTIFICATIONS:    'notifications',
   DOCUMENTS:        'documents',
   ECAC:             'ecac-consultations',
+  CNPJ_SCAN:        'cnpj-scan',
 } as const;
 
 export const JOB_NAMES = {
   // Fila: fiscal-reminders
   SEND_FISCAL_ALERT: 'send-fiscal-alert',
   DAILY_SCAN:        'daily-scan',
+  CNPJ_SCAN_WORKSPACE: 'cnpj-scan-workspace',
 
   // Fila: notifications
   SEND_WHATSAPP: 'send-whatsapp',

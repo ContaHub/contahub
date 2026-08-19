@@ -37,6 +37,15 @@ export class FiscalService {
   }
 
   async create(workspaceId: string, dto: CreateObligationDto) {
+    // Garante que o cliente informado pertence ao workspace autenticado —
+    // evita que uma obrigação seja associada a cliente de outro escritório.
+    const client = await prisma.client.findFirst({
+      where: { id: dto.clientId, workspaceId },
+      select: { id: true },
+    });
+    if (!client) {
+      throw new NotFoundException("Cliente não encontrado neste workspace");
+    }
     const data = await prisma.fiscalObligation.create({ data: { workspaceId, ...dto }, include: { client: { select: { id: true, name: true, tradeName: true } } } });
     this.logger.log(`📋 Criada — ${data.type} | Cliente: ${data.client?.name} | Vencimento: ${data.dueDate?.toLocaleDateString("pt-BR")}`);
     return { data, message: "Obrigação cadastrada" };
@@ -48,6 +57,18 @@ export class FiscalService {
       include: { client: { select: { name: true, tradeName: true } } }
     });
     if (!existing) throw new NotFoundException("Obrigação não encontrada");
+
+    // Se o clientId estiver sendo alterado, garante que o novo cliente
+    // também pertence a este workspace.
+    if (dto.clientId) {
+      const client = await prisma.client.findFirst({
+        where: { id: dto.clientId, workspaceId },
+        select: { id: true },
+      });
+      if (!client) {
+        throw new NotFoundException("Cliente não encontrado neste workspace");
+      }
+    }
 
     // Monta log das alterações comparando antes x depois
     const changes: string[] = [];

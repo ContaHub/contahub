@@ -50,7 +50,17 @@ export class SubscriptionWorker {
       for (const sub of subscriptions) {
         try {
           if (sub.asaasSubscriptionId) {
-            await this.asaasService.cancelSubscription(sub.asaasSubscriptionId);
+            try {
+              await this.asaasService.cancelSubscription(sub.asaasSubscriptionId);
+            } catch (asaasErr) {
+              // Se já estiver cancelada/inexistente no Asaas, apenas registra
+              // e segue para finalizar o status local — o objetivo (parar de
+              // cobrar) já foi alcançado por outro caminho.
+              this.logger.warn(
+                `Assinatura ${sub.asaasSubscriptionId} já estava cancelada/inexistente no Asaas: ${asaasErr.message}`,
+                );
+            }
+
           }
 
           await prisma.subscription.update({

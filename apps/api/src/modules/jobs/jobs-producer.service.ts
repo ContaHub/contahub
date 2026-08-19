@@ -20,7 +20,9 @@ export class JobsProducerService {
 
   constructor(
     @InjectQueue(QUEUES.NOTIFICATIONS) private notificationsQueue: Queue,
-    @InjectQueue(QUEUES.FISCAL_REMINDERS) private fiscalQueue: Queue
+    @InjectQueue(QUEUES.FISCAL_REMINDERS) private fiscalQueue: Queue,
+    @InjectQueue(QUEUES.CNPJ_SCAN) private cnpjScanQueue: Queue,
+
   ) {}
 
   // ── WhatsApp ───────────────────────────────────────────────────────────────
@@ -115,4 +117,32 @@ export class JobsProducerService {
       );
       return job.id as string;
     }
+    // ── Varredura de CNPJ (manual, por workspace) ────────────────────────────
+    async queueCnpjScan(workspaceId: string): Promise<string> {
+      const job = await this.cnpjScanQueue.add(
+        JOB_NAMES.CNPJ_SCAN_WORKSPACE,
+        { workspaceId },
+        { jobId: `cnpj-scan-${workspaceId}-${Date.now()}` }
+      );
+      this.logger.log(`Varredura de CNPJ enfileirada — workspace: ${workspaceId} — job: ${job.id}`);
+      return job.id as string;
+    }
+
+      async getCnpjScanStatus(jobId: string): Promise<{
+    data: { status: string; progress: number; result: unknown | null } | null;
+  }> {
+    const job = await this.cnpjScanQueue.getJob(jobId);
+    if (!job) {
+      return { data: null };
+    }
+
+    const state = await job.getState();
+    return {
+      data: {
+        status: state,
+        progress: typeof job.progress === 'number' ? job.progress : 0,
+        result: job.returnvalue ?? null,
+      },
+    };
+  }
 }

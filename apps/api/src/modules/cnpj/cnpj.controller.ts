@@ -9,10 +9,41 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { CnpjService } from './cnpj.service';
+import { JobsProducerService } from '../jobs/jobs-producer.service';
 
 @Controller('cnpj')
 export class CnpjController {
-  constructor(private readonly cnpjService: CnpjService) {}
+  constructor(
+    private readonly cnpjService: CnpjService,
+    private readonly jobsProducer: JobsProducerService,
+  ) {}
+
+  // ── Varredura manual de todos os clientes do workspace ────────────────────
+  // POST /api/v1/cnpj/varrer
+  // Assíncrono: enfileira o job e responde imediatamente, evitando timeout
+  // de gateway/proxy quando o workspace tem muitos clientes (rate limit da
+  // ReceitaWS exige 20s de intervalo entre consultas).
+  @Post('varrer')
+  @HttpCode(HttpStatus.OK)
+  async varrer(
+    @Req() req: Request & { workspaceId: string },
+  ) {
+    const jobId = await this.jobsProducer.queueCnpjScan(req.workspaceId);
+
+    return {
+      data:    { jobId },
+      message: 'Varredura de CNPJ iniciada em segundo plano. Isso pode levar alguns minutos, dependendo do número de clientes.',
+    };
+  }
+
+  // ── Status/progresso de uma varredura em andamento ─────────────────────────
+  // GET /api/v1/cnpj/varrer/status/:jobId
+  // Rota declarada antes das rotas com parâmetro genérico (:cnpj, :clientId)
+  // para evitar ambiguidade de matching de rota no NestJS.
+  @Get('varrer/status/:jobId')
+  async getVarrerStatus(@Param('jobId') jobId: string) {
+    return this.jobsProducer.getCnpjScanStatus(jobId);
+  }
 
   // ── Consulta situação cadastral de um CNPJ ────────────────────────────────
   // GET /api/v1/cnpj/:cnpj/status?clientId=xxx
@@ -54,27 +85,12 @@ export class CnpjController {
     return { data: historico };
   }
 
-  // ── Varredura manual de todos os clientes do workspace ────────────────────
-  // POST /api/v1/cnpj/varrer
-  @Post('varrer')
-  @HttpCode(HttpStatus.OK)
-  async varrer(
-    @Req() req: Request & { workspaceId: string },
+  // GET /api/v1/cnpj/:cnpj/lookup
+  @Get(':cnpj/lookup')
+  async getLookup(
+    @Param('cnpj') cnpj: string,
   ) {
-    const result = await this.cnpjService.varrerWorkspace(req.workspaceId);
-
-    return {
-      data:    result,
-      message: `Varredura concluída — ${result.total} CNPJs verificados, ${result.alertas} alertas encontrados`,
-    };
+    const result = await this.cnpjService.lookup(cnpj);
+    return { data: result };
   }
-  // Adicione antes do fechamento da classe
-// GET /api/v1/cnpj/:cnpj/lookup
-@Get(':cnpj/lookup')
-async getLookup(
-  @Param('cnpj') cnpj: string,
-) {
-  const result = await this.cnpjService.lookup(cnpj);
-  return { data: result };
-}
 }

@@ -1,4 +1,4 @@
-import { Controller, Post, Delete, Get, Param, Body, Req } from '@nestjs/common';
+import { Controller, Post, Delete, Get, Param, Body, Req, Logger } from '@nestjs/common';
 import { AsaasService } from './asaas.service';
 import { PrismaClient, SubscriptionPlan } from '@contahub/database';
 import { PLANS } from '@contahub/shared';
@@ -8,6 +8,8 @@ const prisma = new PrismaClient();
 
 @Controller('asaas')
 export class AsaasController {
+  private readonly logger = new Logger(AsaasController.name);
+
   constructor(private readonly asaasService: AsaasService) {}
 
   /**
@@ -78,7 +80,7 @@ export class AsaasController {
           )?.emailAddress;
           if (foundEmail) ownerEmail = foundEmail;
         } catch (err) {
-        // Segue com o fallback se a busca no Clerk falhar
+          // Segue com o fallback se a busca no Clerk falhar
         }
       }
 
@@ -90,60 +92,81 @@ export class AsaasController {
       asaasCustomerId = customer.id;
     }
 
-  // ── Detecta troca de plano: confirma no Asaas (não só no nosso banco) ──
-  const existingAsaasSubId = workspace.subscription?.asaasSubscriptionId;
-  let isPlanChange = false;
-  if (
-    existingAsaasSubId &&
-    workspace.subscription?.status === 'ACTIVE' &&
-    workspace.subscription?.plan !== body.planKey
-  ) {
-    try {
-      const remoteSub = await this.asaasService.getSubscription(existingAsaasSubId);
-      // Só trata como troca de plano se o Asaas confirmar que ela está
-      // realmente ativa lá — evita erro "não pode ser atualizada" quando
-      // a assinatura já foi cancelada/deletada diretamente no painel Asaas.
-      isPlanChange = remoteSub.status === 'ACTIVE';
+    // ── Detecta troca de plano: confirma no Asaas (não só no nosso banco) ──
+    const existingAsaasSubId = workspace.subscription?.asaasSubscriptionId;
+    let isPlanChange = false;
+    let shouldCancelOldFirst = false;
 
-      if (!isPlanChange) {
-        // Dessincronia detectada: nosso banco achava ACTIVE, mas o Asaas
-        // não confirma. Corrige o registro local antes de criar uma nova.
-        await prisma.subscription.update({
-          where: { workspaceId },
-          data: { status: 'CANCELED', canceledAt: new Date() },
-        });
+    if (
+      existingAsaasSubId &&
+      workspace.subscription?.status === 'ACTIVE' &&
+      workspace.subscription?.plan !== body.planKey
+    ) {
+      try {
+        const remoteSub = await this.asaasService.getSubscription(existingAsaasSubId);
+        // Só trata como troca de plano se o Asaas confirmar que ela está
+        // realmente ativa lá — evita erro "não pode ser atualizada" quando
+        // a assinatura já foi cancelada/deletada diretamente no painel Asaas.
+        isPlanChange = remoteSub.status === 'ACTIVE';
+
+        if (!isPlanChange) {
+          // Dessincronia detectada: nosso banco achava ACTIVE, mas o Asaas
+          // não confirma. Corrige o registro local antes de criar uma nova.
+          await prisma.subscription.update({
+            where: { workspaceId },
+            data: { status: 'CANCELED', canceledAt: new Date() },
+          });
+        }
+      } catch {
+        // Se a consulta falhar (ex: assinatura não existe mais), trata como nova
+        isPlanChange = false;
       }
-    } catch {
-      // Se a consulta falhar (ex: assinatura não existe mais), trata como nova
-      isPlanChange = false;
+    } else if (
+      existingAsaasSubId &&
+      workspace.subscription?.status === 'CANCELING'
+    ) {
+      // Cliente estava com cancelamento agendado e escolheu um plano —
+      // interpretamos como desistência do cancelamento. Cancela a
+      // assinatura antiga de verdade no Asaas antes de criar a nova,
+      // para não deixar duas assinaturas ativas cobrando ao mesmo tempo.
+      shouldCancelOldFirst = true;
     }
-  }
 
     let asaasSub: { id: string };
 
-   if (isPlanChange) {
-     // Troca de plano: atualiza a assinatura existente no Asaas (mesmo ID, novo valor)
-     asaasSub = await this.asaasService.updateSubscription(existingAsaasSubId!, {
-       value,
-       description: `ContaHub — Plano ${body.planKey}`,
-     });
-   } else {
+    if (isPlanChange) {
+      // Troca de plano: atualiza a assinatura existente no Asaas (mesmo ID, novo valor)
+      asaasSub = await this.asaasService.updateSubscription(existingAsaasSubId!, {
+        value,
+        description: `ContaHub — Plano ${body.planKey}`,
+      });
+    } else {
+      if (shouldCancelOldFirst) {
+        try {
+          await this.asaasService.cancelSubscription(existingAsaasSubId!);
+        } catch {
+          // Se já estiver cancelada/inexistente no Asaas, ignora e segue
+          // para criar a nova normalmente.
+          this.logger.warn(`Assinatura ${existingAsaasSubId} já estava cancelada/inexistente no Asaas — seguindo com a criação da nova.`);
+        }
+      }
 
-    // Próximo vencimento = amanhã
-    const nextDueDate = new Date();
-    nextDueDate.setDate(nextDueDate.getDate() + 1);
-    const dueDateStr = nextDueDate.toISOString().split('T')[0];
-    // Cria subscription nova no Asaas
-    asaasSub = await this.asaasService.createSubscription({
-      customer:    asaasCustomerId,
-      billingType: body.billingType,
-      value,
-      nextDueDate: dueDateStr,
-      description: `ContaHub — Plano ${body.planKey}`,
-      ...(body.creditCard ? { creditCard: body.creditCard } : {}),
-      ...(body.creditCardHolderInfo ? { creditCardHolderInfo: body.creditCardHolderInfo } : {}),
-    });
-  }
+      // Próximo vencimento = amanhã
+      const nextDueDate = new Date();
+      nextDueDate.setDate(nextDueDate.getDate() + 1);
+      const dueDateStr = nextDueDate.toISOString().split('T')[0];
+
+      // Cria subscription nova no Asaas
+      asaasSub = await this.asaasService.createSubscription({
+        customer:    asaasCustomerId,
+        billingType: body.billingType,
+        value,
+        nextDueDate: dueDateStr,
+        description: `ContaHub — Plano ${body.planKey}`,
+        ...(body.creditCard ? { creditCard: body.creditCard } : {}),
+        ...(body.creditCardHolderInfo ? { creditCardHolderInfo: body.creditCardHolderInfo } : {}),
+      });
+    }
 
     // Atualiza Subscription no banco
     await prisma.subscription.upsert({
@@ -186,7 +209,6 @@ export class AsaasController {
     if (!sub?.asaasSubscriptionId) {
       throw new Error('Nenhuma assinatura ativa encontrada');
     }
-
 
     await prisma.subscription.update({
       where: { workspaceId: req.workspaceId },

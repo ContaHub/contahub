@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
+import { ScheduleModule } from "@nestjs/schedule";
 import { QUEUES } from "@contahub/shared";
 import { FiscalReminderWorker } from "./workers/fiscal-reminder.worker";
 import { NotificationWorker } from "./workers/notification.worker";
@@ -10,12 +11,14 @@ import { EmailService } from "./services/email.service";
 import { BullBoardModule } from "./workers/bull-board.module";
 import { EcacWorker } from './workers/ecac.worker';
 import { SubscriptionWorker } from './workers/subscription.worker';
+import { CnpjScanWorker } from './workers/cnpj-scan.worker';
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const url = new URL(REDIS_URL);
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     BullModule.forRoot({
       connection: {
         host: url.hostname,
@@ -32,7 +35,9 @@ const url = new URL(REDIS_URL);
         { name: QUEUES.FISCAL_REMINDERS },
         { name: QUEUES.NOTIFICATIONS },
         { name: QUEUES.DOCUMENTS },
-        { name: QUEUES.ECAC }
+        { name: QUEUES.ECAC },
+        { name: QUEUES.CNPJ_SCAN }
+
       ),
   ],
   providers: [
@@ -43,6 +48,7 @@ const url = new URL(REDIS_URL);
     WahaClientService,
     EcacBrowserService,
     SubscriptionWorker,
+    CnpjScanWorker,
     EmailService,
     BullBoardModule,
   ],

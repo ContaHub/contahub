@@ -18,3 +18,4 @@ github-recovery-codes.txt
 * copy.*
 * copy2.*
 *.tsbuildinfo
+.pnpm-store/

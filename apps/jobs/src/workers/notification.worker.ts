@@ -34,7 +34,7 @@ export class NotificationWorker extends WorkerHost {
   private async handleWhatsApp(job: Job<SendWhatsappJobData>): Promise<void> {
     const { phone, message } = job.data;
     this.logger.log(`Enviando WhatsApp para ${phone}`);
-    await this.wahaClient.sendText({ chatId: `${phone}@c.us`, text: message });
+    await this.wahaClient.sendText({ chatId: phone, text: message });
     this.logger.log(`WhatsApp enviado para ${phone}`);
   }
 
