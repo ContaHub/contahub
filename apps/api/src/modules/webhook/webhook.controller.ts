@@ -32,7 +32,7 @@ export class WebhookController {
     let event: any;
 
     try {
-      event = wh.verify(JSON.stringify(req.body), {
+      event = wh.verify(req.rawBody as Buffer, {
         'svix-id': svixId,
         'svix-timestamp': svixTimestamp,
         'svix-signature': svixSignature,

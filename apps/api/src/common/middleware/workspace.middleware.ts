@@ -10,6 +10,7 @@ declare global {
       clerkUserId: string;
       userRole?: string;
       userEmail?: string;
+      rawBody?: Buffer;
     }
   }
 }
@@ -19,7 +20,7 @@ const BLOCKED_STATUSES = ["CANCELING", "CANCELED"];
 
 @Injectable()
 export class WorkspaceMiddleware implements NestMiddleware {
-  private readonly logger = new Logger(WorkspaceMiddleware.name);
+  private readonly logger = new Logger(WorkspaceMiddleware.name);s
   async use(req: Request, _res: Response, next: NextFunction) {
     const path = req.originalUrl.split("?")[0]; // Remove query string antes de checar
 

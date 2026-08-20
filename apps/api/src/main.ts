@@ -28,7 +28,7 @@ class AllExceptionsLogger implements ExceptionFilter {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix("api/v1");
 
   // Filtro de exceções — registrado antes do ValidationPipe
