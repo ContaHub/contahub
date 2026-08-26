@@ -54,7 +54,7 @@ export class FiscalReminderWorker extends WorkerHost {
   // ──────────────────────────────────────────────────────────────────────────
   // AGENDAMENTO: todo dia às 08h (horário de Brasília)
   // ──────────────────────────────────────────────────────────────────────────
-  @Cron('0 11 * * *', { name: 'daily-fiscal-scan', timeZone: TZ })
+  @Cron('0 8 * * *', { name: 'daily-fiscal-scan', timeZone: TZ })
   async scheduleDailyScan() {
     this.logger.log('╔══ Iniciando varredura diária de obrigações fiscais ══╗');
 
@@ -262,9 +262,10 @@ export class FiscalReminderWorker extends WorkerHost {
   }
 // ──────────────────────────────────────────────────────────────────────────
   // AGENDAMENTO: varredura semanal de CNPJs — toda segunda às 07h (BRT)
-  // "0 10 * * 1" = 10h UTC = 07h BRT, somente segunda-feira (1)
+    // "0 7 * * 1" = 07h BRT (interpretado direto no timeZone informado), somente segunda-feira (1)
+
   // ──────────────────────────────────────────────────────────────────────────
-  @Cron('0 10 * * 1', { name: 'weekly-cnpj-scan', timeZone: TZ })
+    @Cron('0 7 * * 1', { name: 'weekly-cnpj-scan', timeZone: TZ })
   async scheduleWeeklyCnpjScan() {
     this.logger.log('╔══ Iniciando varredura semanal de CNPJs ══╝');
 

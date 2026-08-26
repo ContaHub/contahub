@@ -276,8 +276,16 @@ export default function DashboardPage() {
               ) : (
                 <AlertRow color="blue" text="Nenhuma obrigação urgente" sub="Todos os prazos estão sob controle" />
               )}
-              <AlertRow color="amber" text="Documento aguardando aprovação" sub="Acesse Documentos para revisar" />
-              <AlertRow color="blue" text="Workers BullMQ ativos" sub="FiscalReminderWorker — próxima varredura: 08h" />
+             {stats?.ecacAlerts > 0 && (
+               <AlertRow
+                 color="red"
+                 text={`${stats.ecacAlerts} cliente${stats.ecacAlerts !== 1 ? "s" : ""} com pendência${stats.ecacAlerts !== 1 ? "s" : ""} na Receita Federal`}
+                 sub="Acesse e-CAC no cadastro do cliente para detalhes"
+               />
+             )}
+             {(!urgentObligations.length && !stats?.ecacAlerts) && (
+               <AlertRow color="blue" text="Nenhum alerta no momento" sub="Tudo em dia por aqui" />
+             )}
             </div>
           </div>
         </div>

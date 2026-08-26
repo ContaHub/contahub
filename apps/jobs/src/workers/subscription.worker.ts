@@ -28,7 +28,7 @@ export class SubscriptionWorker {
   private readonly logger = new Logger(SubscriptionWorker.name);
   private readonly asaasService = new AsaasService();
 
-  @Cron('10 3 * * *', { name: 'finalize-canceling-subscriptions', timeZone: TZ })
+  @Cron('10 0 * * *', { name: 'finalize-canceling-subscriptions', timeZone: TZ })
   async finalizeCancelingSubscriptions() {
     this.logger.log('╔══ Verificando cancelamentos agendados ══╗');
 

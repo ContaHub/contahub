@@ -75,6 +75,7 @@ export class DashboardService {
         dueTodayObligations,
         completedThisMonth,
         upcomingObligations,
+        ecacAlerts,
       },
     };
   }
