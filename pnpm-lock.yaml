@@ -32,6 +32,9 @@ importers:
       '@nestjs/bullmq':
         specifier: ^11.0.4
         version: 11.0.4(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@10.4.22)(reflect-metadata@0.2.2)(rxjs@7.8.2))(bullmq@5.76.9)
+      '@nestjs/cli':
+        specifier: ^10.3.0
+        version: 10.4.9
       '@nestjs/common':
         specifier: ^10.3.0
         version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -86,6 +89,9 @@ importers:
       svix:
         specifier: ^1.96.0
         version: 1.96.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
       xml2js:
         specifier: ^0.6.2
         version: 0.6.2
@@ -93,9 +99,6 @@ importers:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
-      '@nestjs/cli':
-        specifier: ^10.3.0
-        version: 10.4.9
       '@types/bcrypt':
         specifier: ^6.0.0
         version: 6.0.0
@@ -129,9 +132,6 @@ importers:
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
 
   apps/jobs:
     dependencies:
@@ -249,6 +249,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
       zod:
         specifier: ^3.23.0
         version: 3.25.76
@@ -289,9 +292,6 @@ importers:
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
-      typescript:
-        specifier: ^5.4.5
-        version: 5.9.3
 
   apps/web:
     dependencies:
@@ -350,29 +350,28 @@ importers:
       '@prisma/client':
         specifier: ^5.13.0
         version: 5.22.0(prisma@5.22.0)
+      prisma:
+        specifier: ^5.13.0
+        version: 5.22.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.41
-      prisma:
-        specifier: ^5.13.0
-        version: 5.22.0
       tsx:
         specifier: ^4.7.0
         version: 4.22.0
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
 
   packages/shared:
     dependencies:
-      zod:
-        specifier: ^3.23.0
-        version: 3.25.76
-    devDependencies:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
 
   packages/ui:
     devDependencies:
