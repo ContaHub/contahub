@@ -16,6 +16,8 @@ import { Text } from "@react-email/text";
 import * as React from "react";
 import type { DeadlineAlertPayload } from "@contahub/shared";
 
+const TailwindComp = Tailwind as any;
+
 interface DeadlineAlertEmailProps {
   recipientName: string;
   payload: DeadlineAlertPayload;
@@ -28,9 +30,9 @@ function urgencyColor(days: number): string {
 }
 
 function urgencyLabel(days: number): string {
-  if (days === 1) return "VENCE AMANHÃ";
-  if (days === 3) return "Vence em 3 dias";
-  return "Lembrete: 7 dias";
+  if (days === 1) return "🚨 Urgente";
+  if (days === 3) return "⚠️ Atenção";
+  return "ℹ️ Lembrete";
 }
 
 export default function DeadlineAlertEmail({
@@ -46,7 +48,7 @@ export default function DeadlineAlertEmail({
         {urgencyLabel(payload.daysUntil)} — {payload.obligationType} de{" "}
         {payload.clientName} vence em {payload.dueDate}
       </Preview>
-      <Tailwind>
+      <TailwindComp>
         <Body className="bg-gray-50 font-sans">
           <Container className="mx-auto my-8 max-w-xl">
             <Section
@@ -112,7 +114,7 @@ export default function DeadlineAlertEmail({
             </Section>
           </Container>
         </Body>
-      </Tailwind>
+      </TailwindComp>
     </Html>
   );
 }

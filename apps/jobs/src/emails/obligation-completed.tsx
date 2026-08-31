@@ -15,6 +15,8 @@ import { Text } from "@react-email/text";
 import * as React from "react";
 import type { ObligationCompletedPayload } from "@contahub/shared";
 
+const TailwindComp = Tailwind as any;
+
 interface ObligationCompletedEmailProps {
   recipientName: string;
   payload: ObligationCompletedPayload;
@@ -30,7 +32,7 @@ export default function ObligationCompletedEmail({
       <Preview>
         {payload.obligationType} de {payload.clientName} foi concluída
       </Preview>
-      <Tailwind>
+      <TailwindComp>
         <Body className="bg-gray-50 font-sans">
           <Container className="mx-auto my-8 max-w-xl">
             <Section className="rounded-t-xl bg-emerald-600 px-8 py-6">
@@ -83,7 +85,7 @@ export default function ObligationCompletedEmail({
             </Section>
           </Container>
         </Body>
-      </Tailwind>
+      </TailwindComp>
     </Html>
   );
 }

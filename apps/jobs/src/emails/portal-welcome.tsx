@@ -16,6 +16,8 @@ import { Text } from "@react-email/text";
 import * as React from "react";
 import type { PortalWelcomePayload } from "@contahub/shared";
 
+const TailwindComp = Tailwind as any;
+
 interface PortalWelcomeEmailProps {
   recipientName: string;
   payload: PortalWelcomePayload;
@@ -31,7 +33,7 @@ export default function PortalWelcomeEmail({
       <Preview>
         Seu acesso ao portal do {payload.workspaceName} foi criado
       </Preview>
-      <Tailwind>
+      <TailwindComp>
         <Body className="bg-gray-50 font-sans">
           <Container className="mx-auto my-8 max-w-xl">
             <Section className="rounded-t-xl bg-blue-600 px-8 py-6">
@@ -107,7 +109,7 @@ export default function PortalWelcomeEmail({
             </Section>
           </Container>
         </Body>
-      </Tailwind>
+      </TailwindComp>
     </Html>
   );
 }
