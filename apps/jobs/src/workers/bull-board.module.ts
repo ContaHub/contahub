@@ -48,6 +48,10 @@ export class BullBoardModule implements OnModuleInit {
 
     const app = express();
 
+    // Rota pública de health check para o Render e pings
+    app.get('/', (req, res) => res.json({ status: 'ok', service: 'contahub-jobs' }));
+    app.get('/health', (req, res) => res.json({ status: 'ok', service: 'contahub-jobs' }));
+
     // Proteção básica com API key (mesmo padrão do WAHA)
     app.use('/queues', (req, res, next) => {
       const apiKey = req.headers['x-api-key'];
@@ -60,9 +64,9 @@ export class BullBoardModule implements OnModuleInit {
 
     app.use('/queues', serverAdapter.getRouter());
 
-    const PORT = parseInt(process.env.BULL_BOARD_PORT || '3003', 10);
-    http.createServer(app).listen(PORT, () => {
-      this.logger.log(`Bull Board disponível em http://localhost:${PORT}/queues`);
+    const PORT = parseInt(process.env.PORT || process.env.BULL_BOARD_PORT || '3003', 10);
+    http.createServer(app).listen(PORT, '0.0.0.0', () => {
+      this.logger.log(`Bull Board disponível na porta ${PORT} (/queues)`);
       this.logger.log(`Header necessário: x-api-key: ${process.env.BULL_BOARD_API_KEY || 'contahub-local'}`);
     });
   }

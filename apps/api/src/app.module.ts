@@ -27,6 +27,11 @@ const redisConnection = {
   password: redisUrl.password ? decodeURIComponent(redisUrl.password) : undefined,
   tls: redisUrl.protocol === 'rediss:' ? { rejectUnauthorized: false } : undefined,
   maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  disableClientInfo: true,
+  family: 4,
+  keepAlive: 10000,
+  retryStrategy: (times: number) => Math.min(times * 1000, 10000),
 };
 
 @Module({
