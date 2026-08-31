@@ -15,15 +15,20 @@ import { CnpjScanWorker } from './workers/cnpj-scan.worker';
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const url = new URL(REDIS_URL);
+const redisConnection = {
+  host: url.hostname,
+  port: Number(url.port) || 6379,
+  username: url.username || undefined,
+  password: url.password ? decodeURIComponent(url.password) : undefined,
+  tls: url.protocol === "rediss:" ? { rejectUnauthorized: false } : undefined,
+  maxRetriesPerRequest: null,
+};
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     BullModule.forRoot({
-      connection: {
-        host: url.hostname,
-        port: Number(url.port) || 6379,
-      },
+      connection: redisConnection,
       defaultJobOptions: {
         attempts: 3,
         backoff: { type: "exponential", delay: 5000 },

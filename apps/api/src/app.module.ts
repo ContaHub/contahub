@@ -20,14 +20,20 @@ import { AsaasModule } from './modules/asaas/asaas.module';
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const redisUrl = new URL(REDIS_URL);
+const redisConnection = {
+  host: redisUrl.hostname,
+  port: Number(redisUrl.port) || 6379,
+  username: redisUrl.username || undefined,
+  password: redisUrl.password ? decodeURIComponent(redisUrl.password) : undefined,
+  tls: redisUrl.protocol === 'rediss:' ? { rejectUnauthorized: false } : undefined,
+  maxRetriesPerRequest: null,
+};
+
 @Module({
   imports: [
     // Fase 3 — BullMQ
     BullModule.forRoot({
-      connection: {
-        host: redisUrl.hostname,
-        port: Number(redisUrl.port) || 6379,
-      },
+      connection: redisConnection,
     }),
     JobsModule,
 
