@@ -41,10 +41,10 @@ export class EcacWorker extends WorkerHost implements OnModuleInit {
   private readonly logger = new Logger(EcacWorker.name);
   private readonly prisma = new PrismaClient();
 
-  private readonly supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  private supabase =
+    process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+      : null;
 
   constructor(
     @InjectQueue(QUEUES.ECAC) private readonly ecacQueue: Queue,
@@ -221,6 +221,14 @@ export class EcacWorker extends WorkerHost implements OnModuleInit {
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   private async baixarPfx(storageKey: string): Promise<Buffer> {
+    if (!this.supabase) {
+      if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        this.supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+      } else {
+        throw new Error('Supabase URL ou Service Role Key não configurados no ambiente');
+      }
+    }
+
     const bucket = process.env.SUPABASE_CERTIFICATES_BUCKET || 'certificates';
 
     const { data, error } = await this.supabase.storage
