@@ -6,9 +6,7 @@ export class CreateClientDto {
   @IsString() @IsOptional() tradeName?: string;
   //@IsString() @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, { message: "CNPJ inválido" }) cnpj!: string;
   @IsString() @IsOptional() cnpj?: string;
-  @IsOptional()
-  @IsString()
-  cpf?: string;
+  @IsOptional() @IsString() cpf?: string;
   //@IsEnum(TaxRegime) taxRegime!: TaxRegime;
   @IsEnum(TaxRegime) @IsOptional() taxRegime?: TaxRegime;
   @IsEmail() @IsOptional() email?: string;
