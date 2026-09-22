@@ -51,6 +51,11 @@ function formatTaxRegime(regime: string | null | undefined): string {
   return TAX_REGIME_LABELS[regime] ?? regime;
 }
 
+// Cliente PF é armazenado com cnpj = "PF-<cpf sem máscara>" (ver ClientModal.tsx)
+function isPessoaFisica(client: any): boolean {
+  return typeof client.cnpj === "string" && client.cnpj.startsWith("PF-");
+}
+
 // FIX-2: Pill de regime com cor semântica
 function RegimePill({ regime }: { regime: string | null | undefined }) {
   const label = formatTaxRegime(regime);
@@ -234,7 +239,7 @@ export default function ClientsPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-slate-900 truncate">{getClientDisplayName(c)}</p>
-                    <p className="text-[11px] text-slate-400">{c.cpf && !c.cnpj ? "Pessoa Física" : "Pessoa Jurídica"}</p>
+                    <p className="text-[11px] text-slate-400">{isPessoaFisica(c) ? "Pessoa Física" : "Pessoa Jurídica"}</p>
                   </div>
                 </div>
 

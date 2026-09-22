@@ -110,6 +110,9 @@ lsof -ti:3003 | xargs kill -9 2>/dev/null
 
 pnpm dev
 
+lsof -ti:3002,3010,3003 | xargs kill -9 2>/dev/null
+pnpm dev
+
 # Encontra e mata o processo do ngrok atual
 pkill ngrok
 
