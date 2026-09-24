@@ -56,6 +56,18 @@ function isPessoaFisica(client: any): boolean {
   return typeof client.cnpj === "string" && client.cnpj.startsWith("PF-");
 }
 
+function formatCpfCnpj(rawCnpj: string): string {
+  if (isPessoaFisica({ cnpj: rawCnpj })) {
+    const cpf = rawCnpj.replace("PF-", "").replace(/\D/g, "");
+    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  }
+  // CNPJ: mantém alfanumérico (Sprint de julho/2026), só formata pontuação
+  return rawCnpj.replace(
+    /^([A-Z0-9]{2})([A-Z0-9]{3})([A-Z0-9]{3})([A-Z0-9]{4})([A-Z0-9]{2})$/,
+    "$1.$2.$3/$4-$5"
+  );
+}
+
 // FIX-2: Pill de regime com cor semântica
 function RegimePill({ regime }: { regime: string | null | undefined }) {
   const label = formatTaxRegime(regime);
@@ -230,7 +242,9 @@ export default function ClientsPage() {
             {filtered.map((c) => (
               <div
                 key={c.id}
-                className="group grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_120px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                  className={`group grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_120px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors ${
+                    c.status !== "ACTIVE" ? "opacity-50" : ""
+                }`}
               >
                 {/* Nome + Avatar */}
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -245,7 +259,9 @@ export default function ClientsPage() {
 
                 {/* FIX-3: CNPJ + badge de situação discreto */}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[12px] font-mono text-slate-500 truncate">{c.cnpj || c.cpf || "—"}</span>
+                  <span className="text-[12px] font-mono text-slate-500 truncate">
+                    {c.cnpj ? formatCpfCnpj(c.cnpj) : "—"}
+                  </span>
                   {c.cnpjStatus && <CnpjStatusBadge status={c.cnpjStatus} />}
                   {c.ecacAlertCount > 0 && (
                     <span
@@ -291,11 +307,13 @@ export default function ClientsPage() {
 
                 {/* Ações — sem alteração */}
                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <IconButton
-                    icon={checkingId === c.id ? Loader : Search}
-                    label="Verificar CNPJ"
-                    onClick={() => checkingId !== c.id && handleVerificarCnpj(c)}
-                  />
+                  {!isPessoaFisica(c) && (
+                    <IconButton
+                      icon={checkingId === c.id ? Loader : Search}
+                      label="Verificar CNPJ"
+                      onClick={() => checkingId !== c.id && handleVerificarCnpj(c)}
+                    />
+                  )}
                   <IconButton
                     icon={ShieldAlert}
                     label="Ver e-CAC"
@@ -307,7 +325,9 @@ export default function ClientsPage() {
                     onClick={() => setCertClient(c)}
                   />
                   <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
-                  <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setClientToDelete(c)} />
+                  {c.status === "ACTIVE" && (
+  <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setClientToDelete(c)} />
+)}
                 </div>
               </div>
             ))}

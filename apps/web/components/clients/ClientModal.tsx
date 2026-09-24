@@ -41,7 +41,7 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
   const [cnpjFound, setCnpjFound] = useState(false);
 
   const initialType: PersonType =
-    client?.cpf && !client?.cnpj ? "PF" : "PJ";
+    client?.cnpj?.startsWith("PF-") ? "PF" : "PJ";
 
   const [personType, setPersonType] = useState<PersonType>(initialType);
 
@@ -58,7 +58,7 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
     street: "",
     city: "",
     state: "",
-    notes: "",
+    notes: client?.notes || "",
     // ── Portal do cliente ──
     portalEnabled: client?.portalEnabled ?? false,
     portalEmail: client?.portalEmail || "",
@@ -132,7 +132,7 @@ async function fetchCnpjData(cnpj: string) {
       name: "", tradeName: "", cnpj: "", cpf: "",
       taxRegime: type === "PF" ? "ISENTO" : "SIMPLES_NACIONAL",
       email: "", phone: "", whatsapp: "",
-      zipCode: "", street: "", city: "", state: "", notes: "",
+      zipCode: "", street: "", city: "", state: "", notes: client?.notes || "",
       portalEnabled: false, portalEmail: "",
     });
     setCnpjFound(false);

@@ -27,6 +27,8 @@ export class ClientsService {
         cnpjStatus: true, cnpjLastChecked: true,
         ecacAlertCount: true, ecacLastChecked: true,
         createdAt: true,
+        notes: true, 
+        zipCode: true, street: true, city: true, state: true,
       }
     }),
     prisma.client.count({ where })
