@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2, Hash } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2, Hash, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Card, Badge, Button, IconButton,
@@ -11,7 +11,7 @@ import {
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { ClientModal } from "@/components/clients/ClientModal";
 import CertificateModal from "@/components/certificates/CertificateModal";
-import { getClients, deleteClient } from "@/lib/clients";
+import { getClients, deleteClient, reactivateClient } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
 import { getClientDisplayName } from "@contahub/shared";
@@ -154,6 +154,15 @@ export default function ClientsPage() {
       console.error("Erro ao remover cliente:", err);
     }
   }
+
+  async function handleReactivate(client: any) {
+  try {
+    await reactivateClient(client.id);
+    load();
+  } catch (err) {
+    console.error("Erro ao reativar cliente:", err);
+  }
+}
 
   async function handleVerificarCnpj(client: any) {
     if (!client.cnpj) return;
@@ -307,52 +316,61 @@ export default function ClientsPage() {
 
                 {/* Ações — sem alteração */}
                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {!isPessoaFisica(c) && (
-                    <IconButton
-                      icon={checkingId === c.id ? Loader : Search}
-                      label="Verificar CNPJ"
-                      onClick={() => checkingId !== c.id && handleVerificarCnpj(c)}
-                    />
+                  {c.status === "ACTIVE" ? (
+                    <>
+                      {!isPessoaFisica(c) && (
+                        <IconButton
+                          icon={checkingId === c.id ? Loader : Search}
+                          label="Verificar CNPJ"
+                          onClick={() => checkingId !== c.id && handleVerificarCnpj(c)}
+                        />
+                      )}
+                      <IconButton icon={ShieldAlert} label="Ver e-CAC" onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)} />
+                      <IconButton icon={KeyRound} label="Certificado digital A1" onClick={() => setCertClient(c)} />
+                      <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
+                      <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setClientToDelete(c)} />
+                    </>
+                  ) : (
+                    <IconButton icon={RotateCcw} label="Reativar" onClick={() => handleReactivate(c)} />
                   )}
-                  <IconButton
-                    icon={ShieldAlert}
-                    label="Ver e-CAC"
-                    onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)}
-                  />
-                  <IconButton
-                    icon={KeyRound}
-                    label="Certificado digital A1"
-                    onClick={() => setCertClient(c)}
-                  />
-                  <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
-                  {c.status === "ACTIVE" && (
-  <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setClientToDelete(c)} />
-)}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Mobile card list — sem alteração */}
+          {/* Mobile card list */}
           <div className="md:hidden">
             {filtered.length === 0 && (
               <EmptyState icon={Users} title="Nenhum cliente" description="Adicione clientes para começar." />
             )}
             {filtered.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0">
+              <div
+                key={c.id}
+                className={`flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0 ${
+                  c.status !== "ACTIVE" ? "opacity-50" : ""
+                }`}
+              >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[12px] font-extrabold flex-shrink-0 ${avatarColor(c.name)}`}>
                   {clientInitials(c.name)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold text-slate-900 truncate">{getClientDisplayName(c)}</p>
-                  <p className="text-[12px] text-slate-500 truncate">{c.cnpj || c.cpf} · {formatTaxRegime(c.taxRegime)}</p>
+                  <p className="text-[12px] text-slate-500 truncate">
+                    {c.cnpj ? formatCpfCnpj(c.cnpj) : "—"} · {formatTaxRegime(c.taxRegime)}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={c.status === "ACTIVE" ? "success" : "gray"}>
                     {c.status === "ACTIVE" ? "Ativo" : "Inativo"}
                   </Badge>
-                  <IconButton icon={KeyRound} label="Certificado" size={13} onClick={() => setCertClient(c)} />
-                  <IconButton icon={Pencil} label="Editar" size={13} onClick={() => { setEditClient(c); setModalOpen(true); }} />
+                  {c.status === "ACTIVE" ? (
+                    <>
+                      <IconButton icon={KeyRound} label="Certificado" size={13} onClick={() => setCertClient(c)} />
+                      <IconButton icon={Pencil} label="Editar" size={13} onClick={() => { setEditClient(c); setModalOpen(true); }} />
+                    </>
+                  ) : (
+                    <IconButton icon={RotateCcw} label="Reativar" size={13} onClick={() => handleReactivate(c)} />
+                  )}
                 </div>
               </div>
             ))}

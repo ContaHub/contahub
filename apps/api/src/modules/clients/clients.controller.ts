@@ -16,6 +16,7 @@ export class ClientsController {
   @Post() @HttpCode(HttpStatus.CREATED) create(@Req() req: Request, @Body() dto: CreateClientDto) { return this.clientsService.create(req.workspaceId, dto); }
   @Put(":id") update(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateClientDto) { return this.clientsService.update(req.workspaceId, id, dto); }
   @Delete(":id") @HttpCode(HttpStatus.NO_CONTENT) remove(@Req() req: Request, @Param("id") id: string) { return this.clientsService.remove(req.workspaceId, id); }
+  @Post(':id/reactivate') async reactivate(@Param('id') id: string, @Req() req: any) { return this.clientsService.reactivate(req.workspaceId, id); }
   /*@Post("free")
   async createFree(
     @Body() dto: CreateClientFreeDto,

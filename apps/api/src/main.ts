@@ -68,6 +68,7 @@ async function bootstrap() {
     credentials: true 
   });
   await app.listen(process.env.PORT || 3002);
-  console.log("🚀 ContaHub API rodando em http://localhost:3002/api/v1");
+  //console.log("🚀 ContaHub API rodando em http://localhost:3002/api/v1");
+  console.log("🚀 ContaHub API rodando");
 }
 bootstrap();

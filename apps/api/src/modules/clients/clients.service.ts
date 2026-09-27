@@ -147,4 +147,10 @@ async create(workspaceId: string, dto: CreateClientDto) {
     await this.findOne(workspaceId, id);
     await prisma.client.update({ where: { id }, data: { status: "INACTIVE" } });
   }
+
+  async reactivate(workspaceId: string, id: string) {
+  await this.findOne(workspaceId, id);
+  await prisma.client.update({ where: { id }, data: { status: "ACTIVE" } });
+  return { message: "Cliente reativado" };
+}
 }

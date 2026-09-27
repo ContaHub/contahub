@@ -91,6 +91,10 @@ export async function deleteClient(id: string): Promise<void> {
   // Não faz .json() — DELETE retorna 204 sem body
 }
 
+export async function reactivateClient(id: string): Promise<void> {
+  await apiFetch(`/clients/${id}/reactivate`, { method: "POST" });
+}
+
 // Labels em PT-BR para regime tributário
 export const TAX_REGIME_LABELS: Record<string, string> = {
   SIMPLES_NACIONAL: "Simples Nacional",
