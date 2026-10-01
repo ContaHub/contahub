@@ -119,6 +119,7 @@ export default function ClientsPage() {
   const { getToken } = useAuth();
 
   const [clients, setClients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -129,8 +130,15 @@ export default function ClientsPage() {
   const [clientToDelete, setClientToDelete] = useState<any | null>(null);
 
   const load = async () => {
-    const r = await getClients();
-    setClients(r.data || []);
+    setLoading(true);
+    try {
+      const r = await getClients();
+      setClients(r.data || []);
+    } catch (err) {
+      console.error("Erro ao carregar clientes:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -225,6 +233,12 @@ export default function ClientsPage() {
         </FilterBar>
 
         <Card>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : (
+          <>
           {/* Desktop table */}
           <div className="hidden md:block">
             <div className="grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_120px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
@@ -375,6 +389,8 @@ export default function ClientsPage() {
               </div>
             ))}
           </div>
+          </>
+          )}
         </Card>
       </div>
 

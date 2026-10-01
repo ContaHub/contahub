@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { uploadDocument } from "@/lib/documents";
 import { getClients, Client } from "@/lib/clients";
 import { useEffect } from "react";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface UploadModalProps {
   preselectedClientId?: string;
@@ -20,6 +21,7 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useDialogA11y(onClose);
 
   useEffect(() => {
     getClients({ limit: 100 }).then((res) => setClients(res.data));
@@ -55,6 +57,7 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div 
+        ref={dialogRef}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg"
         role="dialog"
         aria-modal="true"

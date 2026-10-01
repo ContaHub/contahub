@@ -8,6 +8,7 @@ import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { useAuth } from "@clerk/nextjs";
 import { PLANS } from "@contahub/shared";
 import type { PlanConfig, PlanKey } from "@contahub/shared";
+import { RefreshCw } from "lucide-react";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ export default function BillingPage() {
 
   const [planData, setPlanData]       = useState<PlanData | null>(null);
   const [loading, setLoading]         = useState(true);
+  const [planError, setPlanError]     = useState(false);
   const [pendingPlan, setPendingPlan] = useState<PlanKey | null>(null);
   const [switching, setSwitching]     = useState(false);
   const [switchError, setSwitchError] = useState("");
@@ -189,12 +191,17 @@ export default function BillingPage() {
   const [cancelError, setCancelError]         = useState("");
 
   const loadPlan = () => {
-    fetch('/api/workspace/plan')
-      .then((r) => r.json())
+    setLoading(true);
+    setPlanError(false);
+    fetch('/api/workspace/plan', { signal: AbortSignal.timeout(15000) })
+      .then((r) => {
+        if (!r.ok) throw new Error('Falha ao carregar plano');
+        return r.json();
+      })
       .then((json) => setPlanData(json.data))
-      .catch(() => {})
+      .catch(() => setPlanError(true))
       .finally(() => setLoading(false));
-  };
+   };
 
   useEffect(() => {
     loadPlan();
@@ -264,8 +271,18 @@ export default function BillingPage() {
           <div className="flex items-center justify-center h-40">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
-        ) : !planData ? (
-          <div className="text-center py-12 text-slate-500">Erro ao carregar plano.</div>
+        ) : planError || !planData ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+            <AlertTriangle size={26} className="text-red-500" />
+            <p className="text-[13px] text-slate-600">Não foi possível carregar sua assinatura.</p>
+            <button
+              onClick={loadPlan}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue-600 hover:text-blue-700"
+            >
+              <RefreshCw size={12} />
+              Tentar novamente
+            </button>
+          </div>
         ) : (
           <>
             {/* Status atual */}

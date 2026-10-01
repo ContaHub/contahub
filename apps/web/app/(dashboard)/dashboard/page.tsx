@@ -126,14 +126,19 @@ export default function DashboardPage() {
   const { getToken } = useAuth();
 
   const [stats, setStats]           = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [obligations, setObligations] = useState<any[]>([]);
+  const [obligationsLoading, setObligationsLoading] = useState(true);
   const [docsLast30, setDocsLast30]  = useState<number | null>(null);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   // ── NOVO: onboarding ──────────────────────────────────────────────────────
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   const load = useCallback(async () => {
-    getDashboardStats().then((r) => setStats(r.data)).catch(() => {});
+    getDashboardStats()
+      .then((r) => setStats(r.data))
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
 
     try {
       const token = await getToken();
@@ -168,6 +173,8 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error("Erro ao carregar dados do dashboard:", err);
+    } finally {
+      setObligationsLoading(false);
     }
   }, [getToken]);
 
@@ -201,10 +208,18 @@ export default function DashboardPage() {
       <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6 bg-slate-50">
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-          <MetricCard label="Clientes Ativos" value={stats?.activeClients ?? "—"} icon={Users} variant="blue" onClick={() => router.push("/dashboard/clients")} />
-          <MetricCard label="Obrigações Pendentes" value={stats?.pendingObligations ?? "—"} icon={Clock} variant="amber" onClick={() => router.push("/dashboard/fiscal")} />
-          <MetricCard label="Vencendo Hoje" value={stats?.dueTodayObligations ?? "—"} icon={AlertTriangle} variant="red" valueClass={stats?.dueTodayObligations > 0 ? "text-red-600" : ""} onClick={() => router.push("/dashboard/fiscal")} />
-          <MetricCard label="Concluídas no Mês" value={stats?.completedThisMonth ?? "—"} icon={CheckCircle} variant="green" />
+          {statsLoading ? (
+            [0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-[84px] rounded-xl bg-white border border-slate-200 animate-pulse" />
+            ))
+          ) : (
+            <>
+              <MetricCard label="Clientes Ativos" value={stats?.activeClients ?? "—"} icon={Users} variant="blue" onClick={() => router.push("/dashboard/clients")} />
+              <MetricCard label="Obrigações Pendentes" value={stats?.pendingObligations ?? "—"} icon={Clock} variant="amber" onClick={() => router.push("/dashboard/fiscal")} />
+              <MetricCard label="Vencendo Hoje" value={stats?.dueTodayObligations ?? "—"} icon={AlertTriangle} variant="red" valueClass={stats?.dueTodayObligations > 0 ? "text-red-600" : ""} onClick={() => router.push("/dashboard/fiscal")} />
+              <MetricCard label="Concluídas no Mês" value={stats?.completedThisMonth ?? "—"} icon={CheckCircle} variant="green" />
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 mb-4">
@@ -212,18 +227,22 @@ export default function DashboardPage() {
           <div>
             <SectionHeader title="Próximas obrigações" linkLabel="Ver todas" onLinkClick={() => router.push("/dashboard/fiscal")} />
             <Card>
-              {obligations.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-3">
-                    <CheckCircle size={22} className="text-green-500" />
-                  </div>
-                  <p className="text-[13px] font-semibold text-slate-700 mb-1">Tudo em dia!</p>
-                  <p className="text-[12px] text-slate-400 max-w-[240px]">
-                    Nenhuma obrigação pendente por agora. Quando houver, ela aparecerá aqui.
-                  </p>
+              {obligationsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                 </div>
-              )}
-              {obligations.slice(0, 3).map((obl) => {
+                  ) : obligations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                      <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-3">
+                        <CheckCircle size={22} className="text-green-500" />
+                      </div>
+                      <p className="text-[13px] font-semibold text-slate-700 mb-1">Tudo em dia!</p>
+                      <p className="text-[12px] text-slate-400 max-w-[240px]">
+                        Nenhuma obrigação pendente por agora. Quando houver, ela aparecerá aqui.
+                      </p>
+                    </div>
+                  ) : null}
+                  {!obligationsLoading && obligations.slice(0, 3).map((obl) => {
                 const days = getDaysUntil(obl.dueDate);
                 const Icon = oblIcons[obl.type] ?? Receipt;
                 const isDas = obl.type === "DAS";
@@ -267,25 +286,40 @@ export default function DashboardPage() {
           <div>
             <SectionHeader title="Alertas e atividade" />
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-              {urgentObligations.length > 0 ? (
-                urgentObligations.map((o) => {
-                  const days = getDaysUntil(o.dueDate);
-                  const clientName = o.client ? getClientDisplayName(o.client) : "Cliente";
-                  return <AlertRow key={o.id} color={days <= 1 ? "red" : "amber"} text={`${clientName} — ${o.type} vence em ${days} dia${days !== 1 ? "s" : ""}`} sub="Notificação WhatsApp pendente" />;
-                })
+              {obligationsLoading || statsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                </div>
               ) : (
-                <AlertRow color="blue" text="Nenhuma obrigação urgente" sub="Todos os prazos estão sob controle" />
+                <>
+                  {urgentObligations.length > 0 ? (
+                    urgentObligations.map((o) => {
+                      const days = getDaysUntil(o.dueDate);
+                      const clientName = o.client ? getClientDisplayName(o.client) : "Cliente";
+                      return (
+                        <AlertRow
+                          key={o.id}
+                          color={days <= 1 ? "red" : "amber"}
+                          text={`${clientName} — ${o.type} vence em ${days} dia${days !== 1 ? "s" : ""}`}
+                          sub="Notificação WhatsApp pendente"
+                        />
+                      );
+                    })
+                  ) : (
+                    <AlertRow color="blue" text="Nenhuma obrigação urgente" sub="Todos os prazos estão sob controle" />
+                  )}
+                  {stats?.ecacAlerts > 0 && (
+                    <AlertRow
+                      color="red"
+                      text={`${stats.ecacAlerts} cliente${stats.ecacAlerts !== 1 ? "s" : ""} com pendência${stats.ecacAlerts !== 1 ? "s" : ""} na Receita Federal`}
+                      sub="Acesse e-CAC no cadastro do cliente para detalhes"
+                    />
+                  )}
+                  {(!urgentObligations.length && !stats?.ecacAlerts) && (
+                    <AlertRow color="blue" text="Nenhum alerta no momento" sub="Tudo em dia por aqui" />
+                  )}
+                </>
               )}
-             {stats?.ecacAlerts > 0 && (
-               <AlertRow
-                 color="red"
-                 text={`${stats.ecacAlerts} cliente${stats.ecacAlerts !== 1 ? "s" : ""} com pendência${stats.ecacAlerts !== 1 ? "s" : ""} na Receita Federal`}
-                 sub="Acesse e-CAC no cadastro do cliente para detalhes"
-               />
-             )}
-             {(!urgentObligations.length && !stats?.ecacAlerts) && (
-               <AlertRow color="blue" text="Nenhum alerta no momento" sub="Tudo em dia por aqui" />
-             )}
             </div>
           </div>
         </div>

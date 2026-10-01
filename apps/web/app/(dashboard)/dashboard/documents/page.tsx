@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import {
   Upload, Download, Trash2, FileText, FileImage, FileSpreadsheet,
   File, FileCode, Eye, FileInput, CheckCircle, AlertTriangle,
@@ -122,6 +123,7 @@ function NfeImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const [file, setFile]       = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const dialogRef = useDialogA11y(onClose);
 
   async function handleImport() {
     if (!file) return;
@@ -148,7 +150,7 @@ function NfeImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" role="dialog" aria-modal="true" aria-labelledby="nfe-modal-title">
+      <div ref={dialogRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-md" role="dialog" aria-modal="true" aria-labelledby="nfe-modal-title">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>
             <h2 id="nfe-modal-title" className="text-[15px] font-bold text-slate-900">Importar NF-e XML</h2>

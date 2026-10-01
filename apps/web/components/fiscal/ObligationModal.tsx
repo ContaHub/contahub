@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { createObligation, updateObligation, OBLIGATION_LABELS, MONTHS } from "@/lib/fiscal";
 import { getClients, Client } from "@/lib/clients";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface FiscalObligation {
   id: string;
@@ -28,6 +29,8 @@ export function ObligationModal({ onClose, onSuccess, obligation }: ObligationMo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
+  const titleId = useId();
+  const dialogRef = useDialogA11y(onClose);
 
   const isEdit = !!obligation;
   const now = new Date();
@@ -113,13 +116,13 @@ export function ObligationModal({ onClose, onSuccess, obligation }: ObligationMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+      <div ref={dialogRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 id={titleId} className="text-lg font-semibold text-gray-900">
             {isEdit ? "Editar Obrigação Fiscal" : "Nova Obrigação Fiscal"}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <button onClick={onClose} aria-label="Fechar janela" className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>

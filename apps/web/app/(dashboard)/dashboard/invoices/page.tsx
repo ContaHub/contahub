@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Receipt, CheckCircle, Clock, AlertTriangle, XCircle, CreditCard, QrCode } from "lucide-react";
+import { Receipt, CheckCircle, Clock, AlertTriangle, XCircle, CreditCard, QrCode, RefreshCw } from "lucide-react";
 import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 
@@ -70,14 +70,22 @@ export default function InvoicesPage() {
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(false);
 
-  useEffect(() => {
-    fetch('/api/asaas/invoices')
-      .then((r) => r.json())
+  const load = () => {
+    setLoading(true);
+    setError(false);
+    fetch('/api/asaas/invoices', { signal: AbortSignal.timeout(15000) })
+      .then((r) => {
+        if (!r.ok) throw new Error('Falha ao carregar faturas');
+        return r.json();
+      })
       .then((json) => setInvoices(json.data ?? []))
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -94,6 +102,20 @@ export default function InvoicesPage() {
           <div className="flex items-center justify-center h-40">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
+
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+            <AlertTriangle size={26} className="text-red-500" />
+            <p className="text-[13px] text-slate-600">Não foi possível carregar as faturas.</p>
+            <button
+              onClick={load}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue-600 hover:text-blue-700"
+            >
+              <RefreshCw size={12} />
+              Tentar novamente
+            </button>
+          </div>
+
         ) : (
           <Card>
             {/* Header da tabela */}
@@ -150,7 +172,7 @@ export default function InvoicesPage() {
         )}
 
         {/* Card informativo */}
-        {!loading && (
+        {!loading && !error && (
           <div className="mt-4 bg-white border border-slate-200 rounded-2xl p-4">
             <p className="text-[12px] text-slate-500">
               Faturas geradas automaticamente pelo Asaas. Em caso de dúvidas sobre cobranças, entre em contato pelo suporte.
