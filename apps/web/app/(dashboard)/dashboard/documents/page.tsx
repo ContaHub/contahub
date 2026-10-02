@@ -395,11 +395,21 @@ export default function DocumentsPage() {
       <MobileHeader
         onMenuClick={openMenu}
         title="Documentos"
-        subtitle={`${docs.length} documento${docs.length !== 1 ? "s" : ""}`}
+        subtitle={
+          activeTab === "docs"
+            ? `${docs.length} documento${docs.length !== 1 ? "s" : ""}`
+            : `${nfes.length} NF-e${nfes.length !== 1 ? "s" : ""}`
+        }
         action={
-          <Button variant="primary" size="sm" icon={Upload} onClick={() => setModalOpen(true)}>
-            Enviar
-          </Button>
+          activeTab === "docs" ? (
+            <Button variant="primary" size="sm" icon={Upload} onClick={() => setModalOpen(true)}>
+              Enviar
+            </Button>
+          ) : (
+            <Button variant="primary" size="sm" icon={FileCode} onClick={() => setNfeModal(true)}>
+              Importar
+            </Button>
+          )
         }
       />
       <PageHeader
@@ -521,16 +531,43 @@ export default function DocumentsPage() {
             <div className="md:hidden">
               {filtered.length === 0 && <EmptyState icon={FileText} title="Nenhum documento" />}
               {filtered.map((d) => (
-                <div key={d.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0">
-                  <DocTypeIcon name={d.name} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-slate-900 truncate">{docDisplayName(d)}</p>
-                    <p className="text-[12px] text-slate-500 truncate">{d.client ? getClientDisplayName(d.client) : "—"} · {formatBytes(d.size)}</p>
+                <div key={d.id} className="px-4 py-3.5 border-b border-slate-100 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <DocTypeIcon name={d.name} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-slate-900 truncate">{docDisplayName(d)}</p>
+                      <p className="text-[12px] text-slate-500 truncate">
+                        {d.client ? getClientDisplayName(d.client) : "—"} · {fmtDate(d.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={d.status} />
-                    <IconButton icon={Download} label="Baixar" size={13} onClick={() => handleDownload(d.id)} />
+                  <div className="flex items-center justify-between mt-2">
+                    <StatusBadge status={d.status} createdBy={d.createdBy} />
+                    <div className="flex items-center gap-1.5">
+                      <IconButton
+                        icon={Eye}
+                        label="Visualizar"
+                        size={13}
+                        onClick={() => {
+                          const ext = d.name?.split(".").pop()?.toLowerCase() ?? "";
+                          if (["jpg", "jpeg", "png", "webp"].includes(ext) || ext === "xml" || d.status === "REVISION_REQUESTED") {
+                            setDocDetail(d);
+                          } else {
+                            handleDownload(d.id);
+                          }
+                        }}
+                      />
+                      {!d.createdBy?.startsWith("client:") && (
+                        <IconButton icon={Trash2} variant="danger" label="Remover" size={13} onClick={() => setDocToDelete(d)} />
+                      )}
+                    </div>
                   </div>
+                  {d.status === "REVISION_REQUESTED" && d.reviewNotes && (
+                    <p className="flex items-center gap-1 text-[11px] text-amber-600 mt-1.5">
+                      <MessageSquare size={10} className="flex-shrink-0" />
+                      {d.reviewNotes}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -554,13 +591,21 @@ export default function DocumentsPage() {
             <div className="md:hidden">
               {nfes.length === 0 && <EmptyState icon={FileCode} title="Nenhuma NF-e importada" />}
               {nfes.map((nfe) => (
-                <div key={nfe.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0"><FileCode size={16} className="text-blue-600" /></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-slate-900 truncate">NF-e nº {nfe.numero}</p>
-                    <p className="text-[12px] text-slate-500 truncate">{nfe.client?.name ?? nfe.nomeDestinatario} · {formatValorNfe(nfe.valorTotal)}</p>
+                <div key={nfe.id} className="px-4 py-3.5 border-b border-slate-100 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0"><FileCode size={16} className="text-blue-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-slate-900 truncate">NF-e nº {nfe.numero}</p>
+                      <p className="text-[12px] text-slate-500 truncate">{nfe.client?.name ?? nfe.nomeDestinatario} · {formatValorNfe(nfe.valorTotal)}</p>
+                    </div>
                   </div>
-                  <Badge variant={nfe.client ? "success" : "warning"}>{nfe.client ? "Vinculado" : "Sem cliente"}</Badge>
+                  <div className="flex items-center justify-between mt-2">
+                    <Badge variant={nfe.client ? "success" : "warning"}>{nfe.client ? "Vinculado" : "Sem cliente"}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <IconButton icon={Eye} label="Ver detalhes" size={13} onClick={() => setNfeDetail(nfe)} />
+                      <IconButton icon={Trash2} variant="danger" label="Remover" size={13} onClick={() => setNfeToDelete(nfe)} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

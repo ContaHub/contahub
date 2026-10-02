@@ -492,21 +492,30 @@ export default function FiscalPage() {
               </div>
             )}
             {!loading && filtered.map((o) => (
-              <div key={o.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+              <div key={o.id} className="px-4 py-3.5 border-b border-slate-100 last:border-0">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <ObligationTypePill type={o.type} />
                     <Badge variant={STATUS_BADGE_VARIANT[o.status] ?? "gray"}>
                       {STATUS_LABELS[o.status] ?? o.status}
                     </Badge>
                   </div>
-                  <p className="text-[12px] text-slate-500 truncate">
-                    {o.client ? getClientDisplayName(o.client) : "—"} · {formatDate(o.dueDate)}
-                  </p>
+                  <div className="flex gap-1 flex-shrink-0">
+                    {(o.status === "PENDING" || o.status === "OVERDUE" || o.status === "IN_PROGRESS") && (
+                      <IconButton icon={Check} label="Concluir" size={13} onClick={() => handleComplete(o.id)} variant="success" />
+                    )}
+                    <IconButton icon={Pencil} label="Editar" size={13} onClick={() => setObligationToEdit(o)} />
+                    <IconButton icon={Trash2} label="Remover" size={13} variant="danger" onClick={() => handleDelete(o)} />
+                  </div>
                 </div>
-                {(o.status === "PENDING" || o.status === "OVERDUE" || o.status === "IN_PROGRESS") && (
-                  <IconButton icon={Check} label="Concluir" size={13} onClick={() => handleComplete(o.id)} variant="success" />
-                )}
+                <p className="text-[13px] font-medium text-slate-900 truncate">
+                  {o.client ? getClientDisplayName(o.client) : "—"}
+                </p>
+                <div className="flex items-center gap-3 mt-1 text-[12px] text-slate-500">
+                  <span>Comp.: {formatCompetence(o.competence)}</span>
+                  <span>Venc.: {formatDate(o.dueDate)}</span>
+                </div>
+                <p className="text-[13px] font-semibold text-slate-700 mt-1">{formatCurrency(o.value)}</p>
               </div>
             ))}
           </div>
