@@ -85,7 +85,7 @@ export default function SettingsPage() {
       await sendTestEmail({ to: testEmail, template: testTemplate });
       showToast("success", "E-mail enviado com sucesso!");
     } catch {
-      showToast("error", "Erro ao enviar. Verifique o RESEND_API_KEY.");
+      showToast("error", "Erro ao enviar e-mail de teste. Tente novamente mais tarde.");
     } finally {
       setTestSending(false);
     }
@@ -122,7 +122,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <p className="text-[13px] font-semibold text-slate-900">WhatsApp</p>
-                    <p className="text-[12px] text-slate-500">Via self-hosted</p>
+                    <p className="text-[12px] text-slate-500">Alertas automáticos de prazo</p>
                   </div>
                 </div>
                 <Toggle enabled={whatsapp} onChange={setWhatsapp} />
@@ -135,7 +135,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <p className="text-[13px] font-semibold text-slate-900">E-mail</p>
-                    <p className="text-[12px] text-slate-500">Via Resend — requer RESEND_API_KEY</p>
+                    <p className="text-[12px] text-slate-500">Alertas automáticos de prazo por e-mail</p>
                   </div>
                 </div>
                 <Toggle enabled={email} onChange={setEmail} />
@@ -200,23 +200,23 @@ export default function SettingsPage() {
         </div>
 
         {/* ── Info sobre integrações ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Workers ativos</p>
-            <p className="text-[13px] font-semibold text-slate-900 mb-1">FiscalReminderWorker</p>
-            <p className="text-[12px] text-slate-400 leading-relaxed">Varredura automática todos os dias às 08h. Dispara alertas para obrigações vencendo em 1, 3 e 7 dias.</p>
+         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+           <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Verificação automática</p>
+            <p className="text-[13px] font-semibold text-slate-900 mb-1">Envio diário às 8h</p>
+            <p className="text-[12px] text-slate-400 leading-relaxed">O sistema verifica obrigações vencendo em 1, 3 e 7 dias e dispara os alertas automaticamente.</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">WhatsApp</p>
-            <p className="text-[13px] font-semibold text-slate-900 mb-1">WAHA self-hosted</p>
-            <p className="text-[12px] text-slate-400 leading-relaxed">Sessão configurada em <span className="font-medium text-slate-500">localhost:3000</span>. Requer sessão ativa para envio.</p>
+            <p className="text-[13px] font-semibold text-slate-900 mb-1">Conectado via QR Code</p>
+            <p className="text-[12px] text-slate-400 leading-relaxed">Requer sessão ativa para o envio de mensagens.</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">E-mail</p>
-            <p className="text-[13px] font-semibold text-slate-900 mb-1">Resend</p>
-            <p className="text-[12px] text-slate-400 leading-relaxed">3 templates disponíveis: alerta de prazo, conclusão de obrigação e boas-vindas ao portal do cliente.</p>
-          </div>
-        </div>
+            <p className="text-[13px] font-semibold text-slate-900 mb-1">Envio automático</p>
+             <p className="text-[12px] text-slate-400 leading-relaxed">3 templates disponíveis: alerta de prazo, conclusão de obrigação e boas-vindas ao portal do cliente.</p>
+           </div>
+         </div>
 
       </div>
     </div>

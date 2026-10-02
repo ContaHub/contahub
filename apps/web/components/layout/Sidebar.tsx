@@ -26,7 +26,6 @@ const NAV_COMMS: NavItemData[] = [
 const NAV_SYSTEM: NavItemData[] = [
   { href: "/dashboard/billing",          label: "Assinatura",    icon: CreditCard },        // ← NOVO
   { href: "/dashboard/settings",         label: "Configurações", icon: Settings },
-  { href: "http://localhost:3003/queues", label: "Filas",         icon: Layers, external: true, badge: "↗", badgeVariant: "info" },
 ];
 
 function NavItem({

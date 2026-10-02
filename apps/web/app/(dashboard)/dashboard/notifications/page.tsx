@@ -84,7 +84,7 @@ export default function NotificationsPage() {
       await sendTestMessage(testPhone);
       showToast("success", "Mensagem de teste enviada com sucesso!");
     } catch {
-      showToast("error", "Erro ao enviar. Verifique a conexão WAHA.");
+      showToast("error", "Erro ao enviar. Verifique se o WhatsApp está conectado.");
     } finally {
       setSending(false);
     }
@@ -133,11 +133,7 @@ export default function NotificationsPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[12px] text-blue-700 flex gap-2 items-start">
                   <Bell size={14} className="flex-shrink-0 mt-0.5" />
                   <span>
-                    Acesse a{" "}
-                    <a href="http://localhost:3000/dashboard" target="_blank" rel="noopener noreferrer" className="underline font-semibold">
-                      Área de configuração
-                    </a>{" "}
-                    e verifique se a sessão está ativa.
+                    A sessão do WhatsApp está inativa. Entre em contato com o suporte para reconectar.
                   </span>
                 </div>
               )}
