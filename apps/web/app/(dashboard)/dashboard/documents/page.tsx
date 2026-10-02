@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import {
   Upload, Download, Trash2, FileText, FileImage, FileSpreadsheet,
@@ -318,6 +318,7 @@ function RevisionNote({ notes, reviewedAt }: { notes: string; reviewedAt?: strin
 export default function DocumentsPage() {
   const openMenu     = useMobileMenu();
   const { getToken } = useAuth();
+  const docDetailTitleId = useId();
 
   const [docs, setDocs]   = useState<any[]>([]);
   const [nfes, setNfes]   = useState<NfeDocument[]>([]);
@@ -330,6 +331,7 @@ export default function DocumentsPage() {
   const [nfeToDelete, setNfeToDelete] = useState<NfeDocument | null>(null);
   const [docToDelete, setDocToDelete] = useState<any | null>(null);
   const [docDetail, setDocDetail]     = useState<any | null>(null);
+  const docDetailDialogRef = useDialogA11y(() => setDocDetail(null));
 
   const loadDocs = () => getDocuments().then((r) => setDocs(r.data || [])).catch(() => {});
 
@@ -600,13 +602,20 @@ export default function DocumentsPage() {
       {/* Modal de visualização */}
       {docDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setDocDetail(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={docDetailDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={docDetailTitleId}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
               <div>
-                <p className="text-[14px] font-semibold text-slate-900">{docDisplayName(docDetail)}</p>
+                <p id={docDetailTitleId} className="text-[14px] font-semibold text-slate-900">{docDisplayName(docDetail)}</p>
                 <p className="text-[11px] text-slate-400">{docDetail.client ? getClientDisplayName(docDetail.client) : "—"} · {fmtDate(docDetail.createdAt)}</p>
               </div>
-              <button onClick={() => setDocDetail(null)} className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Fechar">
+              <button onClick={() => setDocDetail(null)} className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1" aria-label="Fechar">
                 <X size={20} />
               </button>
             </div>
