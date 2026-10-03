@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Send, Bell, Wifi, WifiOff, CheckCircle, AlertTriangle, X, MessageSquare, Mail, Zap } from "lucide-react";
-import { Card, Button, PageHeader, SectionHeader } from "@/components/ui";
+import { Card, Button, PageHeader, SectionHeader, ConfirmModal } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { getNotificationStatus, sendTestMessage, sendDueAlerts } from "@/lib/notifications";
 
@@ -65,6 +65,7 @@ export default function NotificationsPage() {
   const [sending, setSending]   = useState(false);
   const [alerting, setAlerting] = useState(false);
   const [toast, setToast]       = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [confirmingAlerts, setConfirmingAlerts] = useState(false);
 
   useEffect(() => {
     getNotificationStatus()
@@ -94,11 +95,22 @@ export default function NotificationsPage() {
     setAlerting(true);
     try {
       const r = await sendDueAlerts(daysAhead);
-      showToast("success", `Alertas disparados: ${r.sent ?? 0} enviado${(r.sent ?? 0) !== 1 ? "s" : ""}.`);
+      const total = r.obligations?.length ?? r.sent ?? 0;
+      const failed = r.obligations?.filter((o) => !o.success).length ?? 0;
+      const sent = r.sent ?? (total - failed);
+
+      if (total === 0) {
+        showToast("success", "Nenhuma obrigação vencendo no período selecionado — nada para enviar.");
+      } else if (failed === 0) {
+        showToast("success", `${sent} alerta${sent !== 1 ? "s" : ""} enviado${sent !== 1 ? "s" : ""} com sucesso.`);
+      } else {
+        showToast("error", `${sent} enviado${sent !== 1 ? "s" : ""}, ${failed} falhou${failed !== 1 ? "ram" : ""}. Verifique os números cadastrados.`);
+      }
     } catch {
       showToast("error", "Erro ao disparar alertas.");
     } finally {
       setAlerting(false);
+      setConfirmingAlerts(false);
     }
   }
 
@@ -125,9 +137,11 @@ export default function NotificationsPage() {
               </div>
 
               <StatusIndicator status={waStatus} />
-              <p className="text-[12px] text-slate-400 mt-1 mb-4">
-                Sessão {waStatus === "connected" ? "ativa" : "inativa"}
-              </p>
+              {waStatus !== "loading" && (
+                <p className="text-[12px] text-slate-400 mt-1 mb-4">
+                  Sessão {waStatus === "connected" ? "ativa" : "inativa"}
+                </p>
+              )}
 
               {waStatus === "disconnected" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[12px] text-blue-700 flex gap-2 items-start">
@@ -174,9 +188,14 @@ export default function NotificationsPage() {
                 </select>
               </div>
 
-              <Button variant="primary" icon={Send} onClick={handleAlerts} disabled={alerting}>
+              <Button variant="primary" icon={Send} onClick={() => setConfirmingAlerts(true)} disabled={alerting}>
                 {alerting ? "Enviando…" : "Enviar alertas agora"}
               </Button>
+              {waStatus === "disconnected" && (
+                <p className="text-[11px] text-amber-600 mt-2">
+                  WhatsApp desconectado — apenas alertas por e-mail serão entregues, se habilitado.
+                </p>
+              )}
             </div>
           </Card>
         </div>
@@ -237,6 +256,16 @@ export default function NotificationsPage() {
         </div>
 
       </div>
+      {confirmingAlerts && (
+        <ConfirmModal
+          title="Enviar alertas de prazo"
+          message={`Isso enviará alertas para todos os clientes com obrigações vencendo em até ${daysAhead} dia${daysAhead > 1 ? "s" : ""}, pelos canais configurados no escritório. Deseja continuar?`}
+          confirmLabel={alerting ? "Enviando..." : "Confirmar envio"}
+          confirmVariant="primary"
+          onConfirm={handleAlerts}
+          onCancel={() => setConfirmingAlerts(false)}
+        />
+      )}
     </div>
   );
 }
