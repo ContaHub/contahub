@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { createClient, updateClient, Client, TAX_REGIME_LABELS } from "@/lib/clients";
+import { ptBRValidity, clearValidity } from "@/lib/formValidation";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface ClientModalProps {
   client?: Client;
@@ -39,6 +41,8 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
   const [error, setError] = useState("");
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cnpjFound, setCnpjFound] = useState(false);
+  const titleId = useId();
+  const dialogRef = useDialogA11y(onClose);
 
   const initialType: PersonType =
     client?.cnpj?.startsWith("PF-") ? "PF" : "PJ";
@@ -185,15 +189,24 @@ async function fetchCnpjData(cnpj: string) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
+      >
 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 id={titleId} className="text-lg font-semibold text-gray-900">
             {client ? "Editar Cliente" : "Novo Cliente"}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <button
+            onClick={onClose}
+            aria-label="Fechar janela"
+            className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">              
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -231,6 +244,8 @@ async function fetchCnpjData(cnpj: string) {
               <div className="relative">
                 <input name="cnpj" value={form.cnpj} onChange={handleChange} required
                   placeholder="Ex: 12.ABC.345/0001-99 ou 00.000.000/0001-00"
+                  onInvalid={ptBRValidity}
+                  onInput={clearValidity}
                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {cnpjLoading && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
@@ -254,6 +269,8 @@ async function fetchCnpjData(cnpj: string) {
               </label>
               <input name="cpf" value={form.cpf} onChange={handleChange} required={personType === "PF"}
                 placeholder="000.000.000-00"
+                onInvalid={ptBRValidity}
+                onInput={clearValidity}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           )}
@@ -265,6 +282,8 @@ async function fetchCnpjData(cnpj: string) {
             </label>
             <input name="name" value={form.name} onChange={handleChange} required
               placeholder={personType === "PJ" ? "Ex: Padaria São João Ltda" : "Ex: Maria Silva"}
+              onInvalid={ptBRValidity}
+              onInput={clearValidity}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
 
@@ -372,6 +391,8 @@ async function fetchCnpjData(cnpj: string) {
                   value={form.portalEmail}
                   onChange={handleChange}
                   required={form.portalEnabled}
+                  onInvalid={ptBRValidity}
+                  onInput={clearValidity}
                   placeholder="cliente@email.com"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />

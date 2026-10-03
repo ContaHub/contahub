@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { createObligation, updateObligation, OBLIGATION_LABELS, MONTHS } from "@/lib/fiscal";
 import { getClients, Client } from "@/lib/clients";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { ptBRValidity, clearValidity } from "@/lib/formValidation";
 
 interface FiscalObligation {
   id: string;
@@ -142,6 +143,8 @@ export function ObligationModal({ onClose, onSuccess, obligation }: ObligationMo
               onChange={handleChange}
               required
               disabled={isEdit}
+              onInvalid={ptBRValidity}
+              onInput={clearValidity}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
             >
               <option value="">Selecione um cliente</option>
@@ -205,6 +208,8 @@ export function ObligationModal({ onClose, onSuccess, obligation }: ObligationMo
               value={form.dueDate}
               onChange={handleChange}
               required
+              onInvalid={ptBRValidity}
+              onInput={clearValidity}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

@@ -5,6 +5,7 @@ import { uploadDocument } from "@/lib/documents";
 import { getClients, Client } from "@/lib/clients";
 import { useEffect } from "react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { ptBRValidity, clearValidity } from "@/lib/formValidation";
 
 interface UploadModalProps {
   preselectedClientId?: string;
@@ -130,6 +131,8 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
                 required
+                onInvalid={ptBRValidity}
+                onInput={clearValidity}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione um cliente</option>
