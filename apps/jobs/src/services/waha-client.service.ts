@@ -37,6 +37,7 @@ export class WahaClientService {
       baseURL: wahaUrl,
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
         ...(apiKey ? { 'X-Api-Key': apiKey } : {}),
       },
       timeout: 15000,
