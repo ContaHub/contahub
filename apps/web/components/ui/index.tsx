@@ -99,7 +99,7 @@ export function MetricCard({
     >
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1.5 min-w-0">
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-[0.5px] block truncate">
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px] block leading-tight">
             {label}
           </span>
           <h3 className={`text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none tracking-tight truncate ${valueClass}`}>

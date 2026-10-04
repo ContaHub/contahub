@@ -238,7 +238,8 @@ export default function NotificationsPage() {
             <div>
               <p className="text-[13px] font-semibold text-slate-900 mb-0.5">WhatsApp</p>
               <p className="text-[12px] text-slate-400 leading-relaxed">
-                Mensagens disparadas automaticamente pelo <span className="font-medium text-slate-500">FiscalReminderWorker</span> todos os dias às 08h.
+                {/*Mensagens disparadas automaticamente pelo <span className="font-medium text-slate-500">FiscalReminderWorker</span> todos os dias às 08h.*/}
+                Mensagens disparadas automaticamente todos os dias às 08h.
               </p>
             </div>
           </div>

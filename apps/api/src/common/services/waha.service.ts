@@ -26,6 +26,14 @@ export class WahaService {
     this.session = this.config.get("WAHA_SESSION") || "default";
   }
 
+  private get headers(): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "X-Api-Key": this.apiKey,
+    "ngrok-skip-browser-warning": "true",
+  };
+}
+
   // Formata número brasileiro para o formato do WhatsApp
   // "11999990000" → "5511999990000@c.us"
   private formatPhoneNumber(phone: string): string {
@@ -39,7 +47,7 @@ export class WahaService {
   async isSessionActive(): Promise<boolean> {
     try {
       const res = await fetch(`${this.baseUrl}/api/sessions/${this.session}`, {
-        headers: { "X-Api-Key": this.apiKey },
+        headers: this.headers,
       });
       if (!res.ok) return false;
       const data = await res.json();
@@ -61,10 +69,7 @@ export class WahaService {
 
       const res = await fetch(`${this.baseUrl}/api/sendText`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-Key": this.apiKey,
-        },
+        headers: this.headers,
         body: JSON.stringify(body),
       });
 
