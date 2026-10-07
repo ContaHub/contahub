@@ -51,11 +51,11 @@ export default function SettingsPage() {
   useEffect(() => {
     getWorkspaceSettings()
       .then((r) => {
-        const channels: string[] = r.notificationChannels || ["WHATSAPP"];
+        const channels: string[] = r.notificationChannels ?? ["WHATSAPP"];
         setWhatsapp(channels.includes("WHATSAPP"));
         setEmail(channels.includes("EMAIL"));
       })
-      .catch(() => {});
+      .catch(() => showToast("error", "Não foi possível carregar as configurações."));
   }, []);
 
   function showToast(type: "success" | "error", message: string) {

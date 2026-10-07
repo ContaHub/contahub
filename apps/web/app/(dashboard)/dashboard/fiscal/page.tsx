@@ -36,7 +36,7 @@ function monthLabel(year: number, month: number) {
 
 function formatDate(dateStr: string) {
   if (!dateStr) return "—";
-  try { return new Date(dateStr).toLocaleDateString("pt-BR"); }
+  try { return new Date(dateStr).toLocaleDateString("pt-BR", { timeZone: "UTC" }); }
   catch { return dateStr; }
 }
 
@@ -64,7 +64,7 @@ function extractYearMonth(value: string | null | undefined): string | null {
   if (value.includes("T")) {
     const d = new Date(value);
     if (isNaN(d.getTime())) return null;
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return `${d.getFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
   }
   if (/^\d{4}-\d{2}/.test(value)) return value.substring(0, 7);
   if (/^\d{2}\/\d{4}$/.test(value)) {

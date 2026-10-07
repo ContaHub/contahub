@@ -143,10 +143,18 @@ export default function ClientsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const norm = (s?: string | null) => (s ?? "").toLowerCase();
+  const alnum = (s?: string | null) => (s ?? "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
   const filtered = clients.filter((c) => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
+    const qDoc = alnum(search);
     const matchSearch =
-      !q || c.tradeName?.toLowerCase().includes(q) || c.cnpj?.includes(q);
+      !q ||
+      norm(c.name).includes(q) ||
+      norm(c.tradeName).includes(q) ||
+      (qDoc.length > 0 &&
+        (alnum(c.cnpj).includes(qDoc) || alnum(c.cpf).includes(qDoc)));
     const matchStatus =
       statusFilter === "all" || c.status?.toLowerCase() === statusFilter;
     return matchSearch && matchStatus;
@@ -424,7 +432,7 @@ export default function ClientsPage() {
       {clientToDelete && (
         <ConfirmModal
           title="Inativar Cliente"
-          message={`Deseja inativar o cliente "${clientToDelete.name}"? Esta ação não pode ser desfeita.`}
+          message={`Deseja inativar o cliente "${getClientDisplayName(clientToDelete)}"? Ele deixará de aparecer como ativo, mas o histórico é mantido e você poderá reativá-lo depois.`}
           confirmLabel="Inativar"
           onConfirm={confirmDeleteClient}
           onCancel={() => setClientToDelete(null)}

@@ -6,6 +6,7 @@ import { createObligation, updateObligation, OBLIGATION_LABELS, MONTHS } from "@
 import { getClients, Client } from "@/lib/clients";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { ptBRValidity, clearValidity } from "@/lib/formValidation";
+import { getClientDisplayName } from "@contahub/shared";
 
 interface FiscalObligation {
   id: string;
@@ -149,7 +150,7 @@ export function ObligationModal({ onClose, onSuccess, obligation }: ObligationMo
             >
               <option value="">Selecione um cliente</option>
               {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.tradeName}</option>
+                <option key={c.id} value={c.id}>{getClientDisplayName(c)}</option>
               ))}
             </select>
           </div>

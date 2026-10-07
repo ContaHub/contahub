@@ -24,6 +24,7 @@ import { OnboardingGuard } from "@/components/dashboard/OnboardingGuard";
 
 function fmtDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR", {
+    timeZone: "UTC",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -31,9 +32,11 @@ function fmtDate(date: string) {
 }
 
 function getDaysUntil(date: string) {
-  return Math.round(
-    (new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  );
+  const d = new Date(date);
+  const due = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const n = new Date();
+  const today = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate());
+  return Math.round((due - today) / 86400000);
 }
 
 function DaysBadge({ days }: { days: number }) {

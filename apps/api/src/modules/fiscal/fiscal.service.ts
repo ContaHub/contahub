@@ -6,7 +6,23 @@ import { CreateObligationDto } from "./dto/create-obligation.dto";
 export class FiscalService {
   private readonly logger = new Logger(FiscalService.name);
 
+  // Hoje em Brasília, expresso como meia-noite UTC — o mesmo formato em que dueDate é salvo.
+  // Comparar com new Date() reintroduziria o erro de um dia.
+  private todayUtcMidnightBRT(): Date {
+    const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    return new Date(`${ymd}T00:00:00.000Z`);
+  }
+
+  private async syncOverdue(workspaceId: string) {
+    const { count } = await prisma.fiscalObligation.updateMany({
+      where: { workspaceId, status: ObligationStatus.PENDING, dueDate: { lt: this.todayUtcMidnightBRT() } },
+      data: { status: ObligationStatus.OVERDUE },
+    });
+    if (count > 0) this.logger.log(`${count} obrigação(ões) marcada(s) como vencida(s)`);
+  }
+
   async findAll(workspaceId: string, { clientId, status, month, year }: { clientId?: string; status?: string; month?: number; year?: number }) {
+    await this.syncOverdue(workspaceId);
     const data = await prisma.fiscalObligation.findMany({
       where: {
         workspaceId,
@@ -85,9 +101,14 @@ export class FiscalService {
     if (dto.notes !== undefined && dto.notes !== existing.notes)
       changes.push(`observações alteradas`);
 
+    const reopen =
+      dto.dueDate &&
+      existing.status === ObligationStatus.OVERDUE &&
+      new Date(dto.dueDate) >= this.todayUtcMidnightBRT();
+
     const data = await prisma.fiscalObligation.update({
       where: { id },
-      data: dto,
+      data: { ...dto, ...(reopen && { status: ObligationStatus.PENDING }) },
       include: { client: { select: { id: true, name: true, tradeName: true } } }
     });
 
