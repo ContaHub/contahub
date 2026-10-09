@@ -6,6 +6,7 @@ import { getClients, Client } from "@/lib/clients";
 import { useEffect } from "react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { ptBRValidity, clearValidity } from "@/lib/formValidation";
+import { getClientDisplayName } from "@contahub/shared";
 
 interface UploadModalProps {
   preselectedClientId?: string;
@@ -137,7 +138,7 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
               >
                 <option value="">Selecione um cliente</option>
                 {clients.map((c) => (
-                  <option key={c.id} value={c.id}>{c.tradeName}</option>
+                  <option key={c.id} value={c.id}>{getClientDisplayName(c)}</option>
                 ))}
               </select>
             </div>
