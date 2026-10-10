@@ -57,6 +57,31 @@ export class WahaService {
     }
   }
 
+  // Resolve um LID (identificador anônimo do WhatsApp) para o telefone real.
+  // Por quê: o webhook de entrada pode trazer "...@lid" em vez do número,
+  // e sem o telefone não dá para casar a mensagem com Client.phone/whatsapp.
+  // Retorna só os dígitos (ex.: "5511948528055") ou null se não resolver.
+  async resolveLid(lid: string): Promise<string | null> {
+    try {
+      // O endpoint espera o LID sem o sufixo "@lid"
+      const lidDigits = lid.replace(/@lid$/, "");
+      const res = await fetch(
+        `${this.baseUrl}/api/${this.session}/lids/${encodeURIComponent(lidDigits)}`,
+        { headers: this.headers },
+      );
+      if (!res.ok) {
+        this.logger.warn(`WAHA lids retornou ${res.status} para o LID informado`);
+        return null;
+      }
+      const data = (await res.json()) as { lid?: string; pn?: string | null };
+      // "pn" vem como "5511948528055@c.us"; guardamos só os dígitos
+      return data.pn ? data.pn.replace(/\D/g, "") : null;
+    } catch (err) {
+      this.logger.error(`Erro ao resolver LID: ${err}`);
+      return null;
+    }
+  }
+
   // Envia mensagem de texto para um número
   async sendText(phone: string, message: string): Promise<SendResult | null> {
     try {

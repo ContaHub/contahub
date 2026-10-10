@@ -9,12 +9,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'crypto';
+import { WahaWebhookService, WahaMessageEvent } from './waha-webhook.service';
 
 @Controller('webhooks/whatsapp')
 export class WahaWebhookController {
   private readonly logger = new Logger(WahaWebhookController.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly wahaWebhook: WahaWebhookService,
+  ) {}
 
   private isValidToken(token?: string): boolean {
     const secret = this.config.get<string>('WAHA_WEBHOOK_SECRET');
@@ -26,20 +30,17 @@ export class WahaWebhookController {
 
   @Post()
   @HttpCode(200)
-  handle(@Query('token') token: string, @Body() body: any) {
+  handle(@Query('token') token: string, @Body() body: WahaMessageEvent) {
     if (!this.isValidToken(token)) {
       throw new UnauthorizedException();
     }
 
-    // Ignora o que não é mensagem recebida (ex.: mensagens enviadas por você)
-    if (body?.event === 'message' && !body?.payload?.fromMe) {
-      this.logger.log(
-        `Mensagem recebida de ${body.payload?.from}: ${body.payload?.body}`,
-      );
-      // Aqui entra a lógica do app (próximos passos)
-    }
+    // Sem await: respondemos 200 na hora para o WAHA não reenviar o webhook.
+    // Erros de processamento ficam só no log.
+    void this.wahaWebhook.handleIncoming(body).catch((err) => {
+      this.logger.error(`Falha ao processar mensagem: ${err}`);
+    });
 
-    // Responde rápido para o WAHA não reenviar
     return { ok: true };
   }
 }

@@ -5,10 +5,12 @@ import { JobsModule } from '../jobs/jobs.module';
 import { WebhookAsaasController } from './webhook-asaas.controller';
 import { ConfigModule } from '@nestjs/config';
 import { WahaWebhookController } from './waha-webhook.controller';
+import { WahaWebhookService } from './waha-webhook.service';
+import { WahaService } from '../../common/services/waha.service';
 
 @Module({
   imports: [JobsModule, ConfigModule],   // ← expõe JobsProducerService via injeção de dependência
   controllers: [WebhookController, WebhookAsaasController, WahaWebhookController],
-  providers: [WebhookService],
+  providers: [WebhookService, WahaWebhookService, WahaService],
 })
 export class WebhookModule {}
