@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2, Hash, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2, Hash, RotateCcw, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Card, Badge, Button, IconButton,
@@ -249,7 +249,7 @@ export default function ClientsPage() {
           <>
           {/* Desktop table */}
           <div className="hidden md:block">
-            <div className="grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_120px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+            <div className="grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_160px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
               {["Cliente", "CNPJ", "Regime", "Status", "Contato", ""].map((h) => (
                 <span key={h} className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]">
                   {h}
@@ -273,7 +273,7 @@ export default function ClientsPage() {
             {filtered.map((c) => (
               <div
                 key={c.id}
-                  className={`group grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_120px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors ${
+                  className={`group grid grid-cols-[2fr_1.4fr_1.1fr_0.8fr_1.5fr_160px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors ${
                     c.status !== "ACTIVE" ? "opacity-50" : ""
                 }`}
               >
@@ -348,6 +348,7 @@ export default function ClientsPage() {
                         />
                       )}
                       <IconButton icon={ShieldAlert} label="Ver e-CAC" onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)} />
+                      <IconButton icon={MessageSquare} label="Comunicações" onClick={() => router.push(`/dashboard/clients/${c.id}/communications`)}/>
                       <IconButton icon={KeyRound} label="Certificado digital A1" onClick={() => setCertClient(c)} />
                       <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
                       <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setClientToDelete(c)} />

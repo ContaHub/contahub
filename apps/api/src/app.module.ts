@@ -17,6 +17,7 @@ import { CertificatesModule } from './modules/certificates/certificates.module';
 import { EcacModule } from './modules/ecac/ecac.module';
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { AsaasModule } from './modules/asaas/asaas.module';
+import { CommunicationsModule } from './modules/communications/communications.module';
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const redisUrl = new URL(REDIS_URL);
@@ -57,6 +58,7 @@ const redisConnection = {
     EcacModule,
     WebhookModule,
     AsaasModule,
+    CommunicationsModule,
   ],
 })
 export class AppModule {
