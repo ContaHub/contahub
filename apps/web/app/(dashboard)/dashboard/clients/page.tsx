@@ -136,6 +136,8 @@ export default function ClientsPage() {
     try {
       const r = await getClients();
       setClients(r.data || []);
+      // Contagem de não lidas em paralelo: se falhar, a lista continua funcionando
+      getUnreadCounts().then(setUnread).catch(() => {});
     } catch (err) {
       console.error("Erro ao carregar clientes:", err);
     } finally {

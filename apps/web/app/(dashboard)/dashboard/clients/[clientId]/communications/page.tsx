@@ -108,27 +108,43 @@ export default function ClientMessagesPage() {
 
           {/* Recebidas à esquerda, enviadas à direita */}
           {items.length > 0 && (
-            <div className="p-4 space-y-3">
+            <>
+              {/* Cabeçalho da tabela: só em telas md+ */}
+              <div className="hidden md:grid grid-cols-[110px_100px_1fr_150px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                {["Direção", "Canal", "Mensagem", "Data e hora"].map((h) => (
+                  <span
+                    key={h}
+                    className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]"
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+
               {items.map((c) => {
                 const inbound = c.direction === "inbound";
                 return (
-                  <div key={c.id} className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
-                    <div
-                      className={`max-w-[85%] sm:max-w-[70%] rounded-xl border px-4 py-3 ${
-                        inbound
-                          ? "bg-slate-50 border-slate-200"
-                          : "bg-blue-50 border-blue-100"
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400 mb-1">
-                        <span className="font-semibold text-slate-500">
-                          {inbound ? "Recebida" : "Enviada"}
-                        </span>
-                        <span>·</span>
-                        <span>{CHANNEL_LABELS[c.channel]}</span>
-                        <span>·</span>
-                        <span>{formatDateTime(c.sentAt ?? c.createdAt)}</span>
-                      </div>
+                  <div
+                    key={c.id}
+                    className="grid grid-cols-1 md:grid-cols-[110px_100px_1fr_150px] gap-1 md:gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                  >
+                    <span>
+                      <span
+                        className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md border ${
+                          inbound
+                            ? "bg-blue-50 text-blue-700 border-blue-100"
+                            : "bg-slate-100 text-slate-600 border-slate-200"
+                        }`}
+                      >
+                        {inbound ? "Recebida" : "Enviada"}
+                      </span>
+                    </span>
+
+                    <span className="text-[12px] text-slate-500">
+                      {CHANNEL_LABELS[c.channel]}
+                    </span>
+
+                    <div className="min-w-0">
                       {c.subject && (
                         <p className="text-[13px] font-semibold text-slate-900 mb-0.5">
                           {c.subject}
@@ -139,10 +155,14 @@ export default function ClientMessagesPage() {
                         {c.content}
                       </p>
                     </div>
+
+                    <span className="text-[12px] text-slate-400">
+                      {formatDateTime(c.sentAt ?? c.createdAt)}
+                    </span>
                   </div>
                 );
               })}
-            </div>
+            </>
           )}
 
           {meta && meta.totalPages > 1 && (
