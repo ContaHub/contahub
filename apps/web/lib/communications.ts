@@ -39,6 +39,19 @@ export async function getClientCommunications(
   return { ...json.data, meta: json.meta };
 }
 
+// Contagem de mensagens recebidas e não lidas por cliente: { [clientId]: n }
+export async function getUnreadCounts(): Promise<Record<string, number>> {
+  const token = await getToken();
+  const res = await fetch(`${API_URL}/api/v1/communications/unread-counts`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  // Indicador é secundário: se falhar, a lista de clientes continua funcionando
+  if (!res.ok) return {};
+  const json = await res.json();
+  return json.data ?? {};
+}
+
 export const CHANNEL_LABELS: Record<CommunicationItem["channel"], string> = {
   WHATSAPP: "WhatsApp",
   EMAIL: "E-mail",

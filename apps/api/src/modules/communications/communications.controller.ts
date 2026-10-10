@@ -10,6 +10,12 @@ interface WorkspaceRequest {
 export class CommunicationsController {
   constructor(private readonly communications: CommunicationsService) {}
 
+  /** GET /api/v1/communications/unread-counts → { data: { [clientId]: n } } */
+  @Get("unread-counts")
+  unreadCounts(@Req() req: WorkspaceRequest) {
+    return this.communications.unreadCounts(req.workspaceId);
+  }
+
   /** GET /api/v1/communications/client/:clientId?page=1 */
   @Get("client/:clientId")
   listByClient(

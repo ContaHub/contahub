@@ -15,6 +15,7 @@ import { getClients, deleteClient, reactivateClient } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
 import { getClientDisplayName } from "@contahub/shared";
+import { getUnreadCounts } from "@/lib/communications";
 //import { ClientModalFree } from "@/components/clients/ClientModalFree";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -128,6 +129,7 @@ export default function ClientsPage() {
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [certClient, setCertClient] = useState<any>(null);
   const [clientToDelete, setClientToDelete] = useState<any | null>(null);
+  const [unread, setUnread] = useState<Record<string, number>>({});
 
   const load = async () => {
     setLoading(true);
@@ -304,6 +306,16 @@ export default function ClientsPage() {
                       {c.ecacAlertCount} RF
                     </span>
                   )}
+                  {(unread[c.id] ?? 0) > 0 && (
+                  <span
+                    onClick={() => router.push(`/dashboard/clients/${c.id}/communications`)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit bg-blue-50 text-blue-600 cursor-pointer hover:bg-blue-100 transition-colors"
+                    title="Ver mensagens não lidas"
+                  >
+                    <MessageSquare size={10} />
+                    {unread[c.id]} nova{unread[c.id] > 1 ? "s" : ""}
+                  </span>
+                )}
                 </div>
 
                 {/* FIX-1 + FIX-2: Regime formatado com pill colorida */}
@@ -348,7 +360,7 @@ export default function ClientsPage() {
                         />
                       )}
                       <IconButton icon={ShieldAlert} label="Ver e-CAC" onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)} />
-                      <IconButton icon={MessageSquare} label="Comunicações" onClick={() => router.push(`/dashboard/clients/${c.id}/communications`)}/>
+                      <IconButton icon={MessageSquare} label="Mensagens" onClick={() => router.push(`/dashboard/clients/${c.id}/communications`)}/>
                       <IconButton icon={KeyRound} label="Certificado digital A1" onClick={() => setCertClient(c)} />
                       <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
                       <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setClientToDelete(c)} />

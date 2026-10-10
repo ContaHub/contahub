@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, MessageSquare, RefreshCw } from "lucide-react";
+import { Card, PageHeader, EmptyState } from "@/components/ui";
+import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import {
   getClientCommunications,
   CHANNEL_LABELS,
@@ -18,9 +21,10 @@ function formatDateTime(iso: string): string {
   });
 }
 
-export default function ClientCommunicationsPage() {
+export default function ClientMessagesPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const router = useRouter();
+  const openMenu = useMobileMenu();
 
   const [result, setResult] = useState<ClientCommunications | null>(null);
   const [page, setPage] = useState(1);
@@ -33,7 +37,7 @@ export default function ClientCommunicationsPage() {
     try {
       setResult(await getClientCommunications(clientId, page));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar comunicações");
+      setError(err instanceof Error ? err.message : "Erro ao carregar mensagens");
     } finally {
       setLoading(false);
     }
@@ -46,106 +50,124 @@ export default function ClientCommunicationsPage() {
   const clientName = result?.client.tradeName || result?.client.name || "Cliente";
   const items = result?.communications ?? [];
   const meta = result?.meta;
+  const subtitle = meta ? `${meta.total} mensagem(ns) no histórico` : "Carregando...";
+
+  // Ações do cabeçalho: voltar + atualizar, no mesmo estilo dos botões da tela de clientes
+  const actions = (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => router.push("/dashboard/clients")}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+      >
+        <ArrowLeft size={14} />
+        Clientes
+      </button>
+      <button
+        onClick={load}
+        disabled={loading}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+      >
+        <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+        Atualizar
+      </button>
+    </div>
+  );
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.push("/dashboard/clients")}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          ← Voltar
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Comunicações — {clientName}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {meta ? `${meta.total} mensagem(ns) no histórico` : "Carregando..."}
-          </p>
-        </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="ml-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-lg transition-colors"
-        >
-          Atualizar
-        </button>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <MobileHeader
+        onMenuClick={openMenu}
+        title={`Mensagens — ${clientName}`}
+        subtitle={subtitle}
+        action={actions}
+      />
 
-      {error && (
-        <div className="rounded-lg px-4 py-3 text-sm bg-red-50 border border-red-200 text-red-700">
-          {error}
-        </div>
-      )}
+      <PageHeader title={`Mensagens — ${clientName}`} subtitle={subtitle} action={actions} />
 
-      {loading && !result && (
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-      )}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
+        {error && (
+          <div className="mb-4 rounded-lg px-4 py-3 text-sm bg-red-50 border border-red-200 text-red-700">
+            {error}
+          </div>
+        )}
 
-      {!loading && !error && items.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <p className="font-medium">Nenhuma comunicação registrada</p>
-          <p className="text-sm text-gray-400 mt-1">
-            As mensagens trocadas com este cliente aparecerão aqui.
-          </p>
-        </div>
-      )}
+        <Card>
+          {!loading && !error && items.length === 0 && (
+            <EmptyState
+              icon={MessageSquare}
+              title="Nenhuma mensagem registrada"
+              description="As mensagens trocadas com este cliente aparecerão aqui."
+            />
+          )}
 
-      {/* Lista: recebidas à esquerda, enviadas à direita */}
-      <div className="space-y-3">
-        {items.map((c) => {
-          const inbound = c.direction === "inbound";
-          return (
-            <div key={c.id} className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
-              <div
-                className={`max-w-[80%] rounded-xl border px-4 py-3 ${
-                  inbound ? "bg-white border-gray-200" : "bg-blue-50 border-blue-100"
-                }`}
-              >
-                <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-1">
-                  <span className="font-semibold">{inbound ? "Recebida" : "Enviada"}</span>
-                  <span>·</span>
-                  <span>{CHANNEL_LABELS[c.channel]}</span>
-                  <span>·</span>
-                  <span>{formatDateTime(c.sentAt ?? c.createdAt)}</span>
-                </div>
-                {c.subject && (
-                  <p className="text-sm font-semibold text-gray-900 mb-0.5">{c.subject}</p>
-                )}
-                {/* whitespace-pre-wrap preserva quebras de linha das mensagens de WhatsApp */}
-                <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                  {c.content}
-                </p>
-              </div>
+          {loading && !result && (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* Paginação */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1 || loading}
-            className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40"
-          >
-            Mais recentes
-          </button>
-          <span className="text-xs text-gray-500">
-            Página {meta.page} de {meta.totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-            disabled={page >= meta.totalPages || loading}
-            className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-40"
-          >
-            Mais antigas
-          </button>
-        </div>
-      )}
+          {/* Recebidas à esquerda, enviadas à direita */}
+          {items.length > 0 && (
+            <div className="p-4 space-y-3">
+              {items.map((c) => {
+                const inbound = c.direction === "inbound";
+                return (
+                  <div key={c.id} className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
+                    <div
+                      className={`max-w-[85%] sm:max-w-[70%] rounded-xl border px-4 py-3 ${
+                        inbound
+                          ? "bg-slate-50 border-slate-200"
+                          : "bg-blue-50 border-blue-100"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400 mb-1">
+                        <span className="font-semibold text-slate-500">
+                          {inbound ? "Recebida" : "Enviada"}
+                        </span>
+                        <span>·</span>
+                        <span>{CHANNEL_LABELS[c.channel]}</span>
+                        <span>·</span>
+                        <span>{formatDateTime(c.sentAt ?? c.createdAt)}</span>
+                      </div>
+                      {c.subject && (
+                        <p className="text-[13px] font-semibold text-slate-900 mb-0.5">
+                          {c.subject}
+                        </p>
+                      )}
+                      {/* Texto puro (nunca HTML): mensagens de clientes são entrada não confiável */}
+                      <p className="text-[13px] text-slate-800 whitespace-pre-wrap break-words">
+                        {c.content}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {meta && meta.totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+                className="px-3 py-1.5 text-[12px] rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Mais recentes
+              </button>
+              <span className="text-[11px] text-slate-400">
+                Página {meta.page} de {meta.totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+                disabled={page >= meta.totalPages || loading}
+                className="px-3 py-1.5 text-[12px] rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Mais antigas
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
