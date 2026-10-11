@@ -9,6 +9,7 @@ import {
   Bell, Settings, Layers, Calculator, X,
   Receipt, CreditCard,
 } from "lucide-react";
+import Image from "next/image";
 
 interface NavItemData {
   href: string;
@@ -107,10 +108,18 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
     <div className="flex flex-col h-full bg-[#0F172A] w-56">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3.5 py-[18px] border-b border-white/[0.06] flex-shrink-0">
-        <div className="w-[34px] h-[34px] bg-blue-600 rounded-[9px] flex items-center justify-center flex-shrink-0">
+        {/* <div className="w-[34px] h-[34px] bg-blue-600 rounded-[9px] flex items-center justify-center flex-shrink-0">
           <Calculator size={17} className="text-white" />
         </div>
-        <span className="text-[15px] font-bold text-slate-50 tracking-tight flex-1">ContaHub</span>
+        <span className="text-[15px] font-bold text-slate-50 tracking-tight flex-1">ContaHub</span> */}
+        <Image
+          src="/logo-dark.png"
+          alt="ContaHub"
+          width={140}
+          height={40}
+          className="h-9 w-auto"
+          priority
+        />
         <button onClick={onClose} className="p-1 text-slate-500 hover:text-slate-300 lg:hidden" aria-label="Fechar menu">
           <X size={18} />
         </button>

@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext } from "react";
 import { Menu } from "lucide-react";
+import Image from "next/image";
 
 // Contexto para abrir o drawer mobile a partir de qualquer page filha
 export const MobileMenuContext = createContext<() => void>(() => {});

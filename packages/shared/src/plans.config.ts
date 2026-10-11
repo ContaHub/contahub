@@ -26,7 +26,7 @@ export const PLANS: Record<PlanKey, PlanConfig> = {
     name: 'Básico',
     description: 'Para escritórios em crescimento',
     //priceMonthly: 0,
-    priceMonthly: 500,  // TEMPORÁRIO — teste de fluxo Asaas — reverter para 0 depois
+    priceMonthly: 5000,  // TEMPORÁRIO — teste de fluxo Asaas — reverter para 0 depois
     priceYearly: 0,
     pricingDefined: true,    
     maxClients: 15,

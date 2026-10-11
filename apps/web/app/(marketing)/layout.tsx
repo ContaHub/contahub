@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-
+import Image from "next/image";
 import type { Metadata } from "next";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010";
@@ -34,7 +34,14 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       <header className="border-b border-slate-100 bg-white/80 backdrop-blur sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="text-lg font-extrabold text-slate-900">
-            ContaHub
+            <Image
+              src="/logo-light.png"
+              alt="ContaHub"
+              width={140}
+              height={38}
+              className="h-9 w-auto"
+              priority
+            />
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">

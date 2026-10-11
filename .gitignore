@@ -20,3 +20,4 @@ github-recovery-codes.txt
 * copy2.*
 *.tsbuildinfo
 .pnpm-store/
+.next_bkp/

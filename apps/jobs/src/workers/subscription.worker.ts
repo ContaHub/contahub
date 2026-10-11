@@ -78,7 +78,7 @@ export class SubscriptionWorker {
         }
       }
 
-      this.logger.log(`╚══ ${finalized} finalizada(s), ${errors} erro(s) ══╝`);
+      this.logger.log(`╚════ ${finalized} finalizada(s), ${errors} erro(s) ═════╝`);
     } catch (err) {
       this.logger.error('Erro na varredura de cancelamentos:', err);
       throw err;
