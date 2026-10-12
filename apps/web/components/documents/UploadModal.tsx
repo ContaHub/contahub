@@ -26,8 +26,15 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
   const dialogRef = useDialogA11y(onClose);
 
   useEffect(() => {
-    getClients({ limit: 100 }).then((res) => setClients(res.data));
-  }, []);
+            getClients({ limit: 100 }).then((res) =>
+      // Só clientes ativos podem receber obrigação nova. No modo edição, mantém o cliente
+      // da obrigação mesmo se estiver inativo: o select é desabilitado e precisa dessa opção
+      // para exibir o nome em vez de ficar em branco.
+      setClients(
+        res.data.filter((c) => c.status === "ACTIVE" )
+      )
+    );
+  });
 
   function handleFileDrop(e: React.DragEvent) {
     e.preventDefault();

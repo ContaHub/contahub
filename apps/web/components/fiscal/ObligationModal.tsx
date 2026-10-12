@@ -74,8 +74,15 @@ export function ObligationModal({ onClose, onSuccess, obligation }: ObligationMo
   });
 
   useEffect(() => {
-    getClients({ limit: 100 }).then((res) => setClients(res.data));
-  }, []);
+        getClients({ limit: 100 }).then((res) =>
+      // Só clientes ativos podem receber obrigação nova. No modo edição, mantém o cliente
+      // da obrigação mesmo se estiver inativo: o select é desabilitado e precisa dessa opção
+      // para exibir o nome em vez de ficar em branco.
+      setClients(
+        res.data.filter((c) => c.status === "ACTIVE" || c.id === obligation?.clientId)
+      )
+    );
+  }, [obligation?.clientId]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
