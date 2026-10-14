@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2, Hash, RotateCcw, MessageSquare } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Search, Loader, KeyRound, ShieldAlert, Mail, Phone, AlertTriangle, CheckCircle2, Hash, RotateCcw, MessageSquare, Send, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Card, Badge, Button, IconButton,
@@ -11,7 +11,7 @@ import {
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { ClientModal } from "@/components/clients/ClientModal";
 import CertificateModal from "@/components/certificates/CertificateModal";
-import { getClients, deleteClient, reactivateClient } from "@/lib/clients";
+import { getClients, deleteClient, reactivateClient, resendPortalAccess } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
 import { getClientDisplayName } from "@contahub/shared";
@@ -130,6 +130,9 @@ export default function ClientsPage() {
   const [certClient, setCertClient] = useState<any>(null);
   const [clientToDelete, setClientToDelete] = useState<any | null>(null);
   const [unread, setUnread] = useState<Record<string, number>>({});
+  const [resendTarget, setResendTarget] = useState<any | null>(null);
+  const [resending, setResending] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -184,6 +187,27 @@ export default function ClientsPage() {
   }
 }
 
+function showToast(type: "success" | "error", message: string) {
+  setToast({ type, message });
+  setTimeout(() => setToast(null), 5000);
+}
+
+async function confirmResendAccess() {
+  if (!resendTarget) return;
+  setResending(true);
+  try {
+    const token = await getToken();
+    const sent = await resendPortalAccess(resendTarget.id, token!);
+    const channels = [sent.whatsapp && "WhatsApp", sent.email && "e-mail"].filter(Boolean).join(" e ");
+    showToast("success", `Acesso reenviado por ${channels} para ${resendTarget.tradeName || resendTarget.name}.`);
+  } catch (err: any) {
+    showToast("error", err.message || "Erro ao reenviar acesso.");
+  } finally {
+    setResending(false);
+    setResendTarget(null);
+  }
+}
+
   async function handleVerificarCnpj(client: any) {
     if (!client.cnpj) return;
     setCheckingId(client.id);
@@ -232,6 +256,25 @@ export default function ClientsPage() {
       />
 
       {/* Content */}
+
+      {toast && (
+        <div className={`flex items-center justify-between text-[13px] px-4 py-3 rounded-lg mb-4 border ${
+          toast.type === "success"
+            ? "bg-green-50 border-green-200 text-green-700"
+            : "bg-red-50 border-red-200 text-red-700"
+        }`}>
+          <div className="flex items-center gap-2">
+            {toast.type === "success"
+              ? <CheckCircle2 size={15} className="flex-shrink-0" />
+              : <AlertTriangle size={15} className="flex-shrink-0" />}
+            <span>{toast.message}</span>
+          </div>
+          <button onClick={() => setToast(null)} className="ml-4 opacity-60 hover:opacity-100 transition-opacity" aria-label="Fechar">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
         <FilterBar>
           <SearchInput
@@ -362,6 +405,11 @@ export default function ClientsPage() {
                         />
                       )}
                       <IconButton icon={ShieldAlert} label="Ver e-CAC" onClick={() => router.push(`/dashboard/clients/${c.id}/ecac`)} />
+                        {/* ↓↓↓ NOVO: Reenviar acesso ao portal ↓↓↓ */}
+                        {c.portalEnabled && c.portalEmail && (
+                          <IconButton icon={Send} label="Reenviar acesso ao portal" onClick={() => setResendTarget(c)} />
+                        )}
+                        {/* ↑↑↑ */}
                       <IconButton icon={MessageSquare} label="Mensagens" onClick={() => router.push(`/dashboard/clients/${c.id}/communications`)}/>
                       <IconButton icon={KeyRound} label="Certificado digital A1" onClick={() => setCertClient(c)} />
                       <IconButton icon={Pencil} label="Editar" onClick={() => { setEditClient(c); setModalOpen(true); }} />
@@ -453,6 +501,18 @@ export default function ClientsPage() {
           onCancel={() => setClientToDelete(null)}
         />
       )}
+            {/* ↓↓↓ NOVO: confirmação de reenvio de acesso ↓↓↓ */}
+      {resendTarget && (
+        <ConfirmModal
+          title="Reenviar acesso ao portal"
+          message={`Enviar novamente o link de acesso para "${resendTarget.tradeName || resendTarget.name}" pelos canais configurados no escritório?`}
+          confirmLabel={resending ? "Enviando..." : "Reenviar"}
+          confirmVariant="primary"
+          onConfirm={confirmResendAccess}
+          onCancel={() => setResendTarget(null)}
+        />
+      )}
+      {/* ↑↑↑ */}
     </div>
   );
 }

@@ -1,38 +1,40 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException, HttpException, HttpStatus } from "@nestjs/common";
 import { prisma } from "@contahub/database";
 import { CreateClientDto } from "./dto/create-client.dto";
 //import { CreateClientFreeDto } from "./dto/create-client-free.dto";
 import { UpdateClientDto, ListClientsDto } from "./dto/update-client.dto";
-import { JobsProducerService } from '../jobs/jobs-producer.service';
+import { JobsProducerService } from "../jobs/jobs-producer.service";
+
+// Campos mínimos que o envio de boas-vindas precisa de um cliente
+interface PortalWelcomeTarget {
+  name: string;
+  portalEnabled: boolean;
+  portalEmail: string | null;
+  whatsapp: string | null;
+  phone: string | null;
+}
+
+// Quais canais realmente tiveram o link enfileirado
+export interface PortalWelcomeResult {
+  email: boolean;
+  whatsapp: boolean;
+}
 
 @Injectable()
 export class ClientsService {
   private readonly logger = new Logger(ClientsService.name);
+
+  // Cooldown por cliente: evita que cliques repetidos mandem várias mensagens iguais ao WhatsApp
+  // do cliente final. Em memória basta enquanto a API roda em uma instância só (Render atual);
+  // se escalar horizontalmente, mover para Redis.
+  private readonly resendCooldown = new Map<string, number>();
+  private static readonly RESEND_COOLDOWN_MS = 60_000;
+
   constructor(private readonly jobsProducer: JobsProducerService) {}
 
   async findAll(workspaceId: string, { page = 1, limit = 20, search, status }: ListClientsDto) {
     const where = { workspaceId, ...(status && { status }), ...(search && { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { cnpj: { contains: search } }] }) };
-    const [data, total] = await Promise.all([
-    prisma.client.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { name: "asc" },
-      select: {
-        id: true, name: true, tradeName: true, cnpj: true, cpf: true,
-        //type: true, 
-        status: true, taxRegime: true,
-        email: true, phone: true, whatsapp: true,
-        portalEnabled: true, portalEmail: true,
-        cnpjStatus: true, cnpjLastChecked: true,
-        ecacAlertCount: true, ecacLastChecked: true,
-        createdAt: true,
-        notes: true, 
-        zipCode: true, street: true, city: true, state: true,
-      }
-    }),
-    prisma.client.count({ where })
-  ]);
+    const [data, total] = await Promise.all([prisma.client.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { name: "asc" } }), prisma.client.count({ where })]);
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
@@ -42,102 +44,18 @@ export class ClientsService {
     return { data: client };
   }
 
-async create(workspaceId: string, dto: CreateClientDto) {
+  async create(workspaceId: string, dto: CreateClientDto) {
     const existing = await prisma.client.findUnique({ where: { workspaceId_cnpj: { workspaceId, cnpj: dto.cnpj } } });
     if (existing) throw new ConflictException("CNPJ já cadastrado");
 
     const client = await prisma.client.create({ data: { workspaceId, ...dto } as any });
+    this.logger.log(`Cliente criado: ${client.id}`);
 
-    this.logger.debug(
-      `Cliente criado: ${client.id} — portalEnabled: ${client.portalEnabled}`,
-    );
-
-    if (client.portalEnabled && client.portalEmail) {
-      try {
-        const workspace = await prisma.workspace.findUnique({
-          where: { id: workspaceId },
-          select: { slug: true, name: true, notificationChannels: true },
-        });
-
-        this.logger.debug(
-          `notificationChannels do workspace ${workspaceId}: ${JSON.stringify(workspace?.notificationChannels)}`,
-        );
-
-        const channels = workspace?.notificationChannels ?? ['WHATSAPP'];
-        const shouldSendEmail = channels.includes('EMAIL') || channels.includes('BOTH');
-
-        this.logger.debug(`shouldSendEmail: ${shouldSendEmail}`);
-
-        if (shouldSendEmail) {
-          await this.jobsProducer.queuePortalWelcome({
-            email: client.portalEmail,
-            recipientName: client.name,
-            workspaceName: workspace?.name ?? 'ContaHub',
-            portalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3010'}/portal/${workspace?.slug ?? ''}`,
-          });
-          this.logger.log(`Welcome email enfileirado para o cliente ${client.id}`);
-        } else {
-          this.logger.debug(`E-mail não enviado — canal EMAIL não ativo (cliente ${client.id})`);
-        }
-      } catch (emailError) {
-        this.logger.error(
-          `Erro ao enfileirar welcome email do cliente ${client.id}: ${emailError instanceof Error ? emailError.message : String(emailError)}`,
-          emailError instanceof Error ? emailError.stack : undefined,
-        );
-      }
-    } else {
-      this.logger.debug(
-        `Portal não habilitado para o cliente ${client.id} (portalEnabled=${client.portalEnabled})`,
-      );
-    }
+    await this.sendPortalWelcome(workspaceId, client);
 
     return { data: client, message: "Cliente cadastrado" };
   }
-/*
-  async createFree(workspaceId: string, dto: CreateClientFreeDto) {
-  const client = await prisma.client.create({
-    data: {
-      workspaceId,
-      name:         dto.name,
-      tradeName:    dto.tradeName,
-      cnpj:         dto.cnpj ?? "",   // campo obrigatório no schema — string vazia quando não informado
-      taxRegime:    dto.taxRegime,
-      email:        dto.email,
-      phone:        dto.phone,
-      notes:        dto.notes,
-      portalEnabled: dto.portalEnabled,
-      portalEmail:  dto.portalEmail,
-    } as any,
-  });
 
-  this.logger.debug(`Cliente (free) criado: ${client.id}`);
-
-  if (client.portalEnabled && client.portalEmail) {
-    try {
-      const workspace = await prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { slug: true, name: true, notificationChannels: true },
-      });
-      const channels = workspace?.notificationChannels ?? ["WHATSAPP"];
-      if (channels.includes("EMAIL") || channels.includes("BOTH")) {
-        await this.jobsProducer.queuePortalWelcome({
-          email: client.portalEmail,
-          recipientName: client.name,
-          workspaceName: workspace?.name ?? "ContaHub",
-          portalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010"}/portal/${workspace?.slug ?? ""}`,
-        });
-      }
-    } catch (err) {
-      this.logger.error(
-        `Erro ao enfileirar welcome email do cliente ${client.id}: ${err instanceof Error ? err.message : String(err)}`,
-        err instanceof Error ? err.stack : undefined,
-      );
-    }
-  }
-
-  return { data: client, message: "Cliente cadastrado" };
-}
-*/
   async update(workspaceId: string, id: string, dto: UpdateClientDto) {
     await this.findOne(workspaceId, id);
     return { data: await prisma.client.update({ where: { id }, data: dto }), message: "Cliente atualizado" };
@@ -149,8 +67,101 @@ async create(workspaceId: string, dto: CreateClientDto) {
   }
 
   async reactivate(workspaceId: string, id: string) {
+  // findOne garante que o cliente pertence ao workspace antes de alterar
   await this.findOne(workspaceId, id);
-  await prisma.client.update({ where: { id }, data: { status: "ACTIVE" } });
-  return { message: "Cliente reativado" };
+  const client = await prisma.client.update({ where: { id }, data: { status: "ACTIVE" } });
+  return { data: client, message: "Cliente reativado" };
 }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Reenvia o link de acesso ao portal (botão "Reenviar acesso" na tabela de clientes)
+  // ──────────────────────────────────────────────────────────────────────────
+  async resendPortalAccess(workspaceId: string, id: string) {
+    // findOne já filtra por workspaceId — não dá para reenviar para cliente de outro escritório
+    const { data: client } = await this.findOne(workspaceId, id);
+
+    if (!client.portalEnabled || !client.portalEmail) {
+      throw new BadRequestException("Habilite o portal e informe o e-mail de acesso do cliente antes de reenviar.");
+    }
+
+    const last = this.resendCooldown.get(id) ?? 0;
+    if (Date.now() - last < ClientsService.RESEND_COOLDOWN_MS) {
+      throw new HttpException("Acesso reenviado há pouco. Aguarde 1 minuto para tentar de novo.", HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    const sent = await this.sendPortalWelcome(workspaceId, client);
+
+    if (!sent.email && !sent.whatsapp) {
+      throw new BadRequestException(
+        "Não foi possível enviar: confira os canais ativos em Configurações e o WhatsApp/telefone do cliente.",
+      );
+    }
+
+    this.resendCooldown.set(id, Date.now());
+    return { data: sent, message: "Acesso reenviado" };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Envia o link do portal pelos canais ativos no workspace (e-mail e/ou WhatsApp).
+  // Nunca lança erro: falha de notificação não pode desfazer o cadastro do cliente.
+  // Retorna quais canais foram enfileirados, para o reenvio informar o contador.
+  // ──────────────────────────────────────────────────────────────────────────
+  private async sendPortalWelcome(workspaceId: string, client: PortalWelcomeTarget): Promise<PortalWelcomeResult> {
+    const result: PortalWelcomeResult = { email: false, whatsapp: false };
+
+    // O login do portal é por e-mail, então sem portalEmail não há acesso a liberar
+    if (!client.portalEnabled || !client.portalEmail) return result;
+
+    try {
+      const workspace = await prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { slug: true, name: true, notificationChannels: true },
+      });
+
+      const channels = workspace?.notificationChannels ?? ["WHATSAPP"];
+      // 'BOTH' é um valor legado — mantido por compatibilidade com o código anterior
+      const sendEmail = channels.includes("EMAIL") || channels.includes("BOTH");
+      const sendWhatsapp = channels.includes("WHATSAPP") || channels.includes("BOTH");
+
+      const workspaceName = workspace?.name ?? "ContaHub";
+      const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010"}/portal/${workspace?.slug ?? ""}`;
+
+      // allSettled: se um canal falhar, o outro ainda é tentado
+      const [emailRes, whatsappRes] = await Promise.allSettled([
+        sendEmail
+          ? this.jobsProducer.queuePortalWelcome({
+              email: client.portalEmail,
+              recipientName: client.name,
+              workspaceName,
+              portalUrl,
+            })
+          : Promise.resolve(),
+        sendWhatsapp
+          ? this.jobsProducer.queuePortalWelcomeWhatsapp({
+              // WhatsApp dedicado tem prioridade; telefone é o fallback
+              phone: client.whatsapp ?? client.phone,
+              recipientName: client.name,
+              workspaceName,
+              portalUrl,
+            })
+          : Promise.resolve(false),
+      ]);
+
+      // e-mail: canal ativo + enfileirou sem erro
+      result.email = sendEmail && emailRes.status === "fulfilled";
+      // WhatsApp: o producer devolve true só se o número era válido
+      result.whatsapp = whatsappRes.status === "fulfilled" && whatsappRes.value === true;
+
+      if (emailRes.status === "rejected") {
+        this.logger.error(`Falha ao enfileirar e-mail de boas-vindas: ${emailRes.reason}`);
+      }
+      if (whatsappRes.status === "rejected") {
+        this.logger.error(`Falha ao enfileirar WhatsApp de boas-vindas: ${whatsappRes.reason}`);
+      }
+    } catch (err) {
+      this.logger.error(`Erro ao preparar boas-vindas do portal: ${err}`);
+    }
+
+    return result;
+  }
 }

@@ -79,12 +79,16 @@ export default function NotificationsPage() {
   }
 
   async function handleTest() {
-    if (!testPhone) return;
+    const phone = testPhone.trim();
+    if (!phone || sending) return; // evita duplo envio via Enter + clique
+
     setSending(true);
     try {
-      await sendTestMessage(testPhone);
+      await sendTestMessage(phone);
       showToast("success", "Mensagem de teste enviada com sucesso!");
+      setTestPhone(""); // limpa o campo só quando o envio deu certo
     } catch {
+      // em erro mantém o número, para corrigir e tentar de novo
       showToast("error", "Erro ao enviar. Verifique se o WhatsApp está conectado.");
     } finally {
       setSending(false);

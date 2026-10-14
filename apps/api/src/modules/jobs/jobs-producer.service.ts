@@ -6,10 +6,13 @@
  */
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
-import { Queue } from "bullmq";
+import { Queue, type JobsOptions } from "bullmq";
 import {
   QUEUES,
   JOB_NAMES,
+  DEFAULT_JOB_OPTIONS,
+  normalizeWhatsappNumber,
+  buildPortalWelcomeWhatsapp,
   type SendWhatsappJobData,
   type SendEmailJobData,
 } from "@contahub/shared";
@@ -27,10 +30,10 @@ export class JobsProducerService {
 
   // ── WhatsApp ───────────────────────────────────────────────────────────────
 
-  async queueWhatsApp(data: SendWhatsappJobData): Promise<void> {
-    await this.notificationsQueue.add(JOB_NAMES.SEND_WHATSAPP, data);
-    this.logger.log(`WhatsApp enfileirado para ${data.phone}`);
-  }
+  async queueWhatsApp(data: SendWhatsappJobData, opts?: JobsOptions): Promise<void> {
+  await this.notificationsQueue.add(JOB_NAMES.SEND_WHATSAPP, data, opts);
+  this.logger.log(`WhatsApp enfileirado para ${data.phone}`);
+}
 
   // ── E-mail ─────────────────────────────────────────────────────────────────
 
@@ -106,6 +109,42 @@ export class JobsProducerService {
       },
     });
   }
+
+  // ── Boas-vindas ao portal por WhatsApp ─────────────────────────────────────
+// Retorna true se enfileirou, false se o número é inválido/ausente.
+// Por que boolean e não throw: número ruim não pode quebrar o cadastro do cliente;
+// quem chama decide o que fazer (logar, avisar o contador, etc.).
+async queuePortalWelcomeWhatsapp(params: {
+  phone?: string | null;
+  recipientName: string;
+  workspaceName: string;
+  portalUrl: string;
+}): Promise<boolean> {
+  const phone = normalizeWhatsappNumber(params.phone);
+
+  if (!phone) {
+    this.logger.warn(
+      `Boas-vindas por WhatsApp ignorada para ${params.recipientName} — número ausente ou inválido`,
+    );
+    return false;
+  }
+
+  await this.queueWhatsApp(
+    {
+      phone,
+      message: buildPortalWelcomeWhatsapp({
+        recipientName: params.recipientName,
+        workspaceName: params.workspaceName,
+        portalUrl: params.portalUrl,
+      }),
+    },
+    // Retry com backoff exponencial, igual aos demais jobs.
+    // O BullModule da API não define defaultJobOptions, então sem isso o envio não teria retry.
+    { ...DEFAULT_JOB_OPTIONS },
+  );
+
+  return true;
+}
 
   // ── Varredura fiscal manual ────────────────────────────────────────────────
 
