@@ -30,60 +30,62 @@ export class PortalController {
     return this.portalService.getClientByEmail(slug, email);
   }
 
- @Get(":slug/documents/:clientId")
-async getDocuments(
-  @Param("slug") slug: string,
-  @Param("clientId") clientId: string,
-  @Req() req: Request
-) {
-  await this.portalService.validateClientAccess(slug, clientId, req.userEmail!);
-  return this.portalService.getClientDocuments(slug, clientId);
-}
+  @Get(":slug/documents/:clientId")
+  async getDocuments(
+    @Param("slug") slug: string,
+    @Param("clientId") clientId: string,
+    @Req() req: Request
+  ) {
+    await this.portalService.validatePortalPermission(slug, clientId, req.userEmail!, "VIEW_DOCUMENTS");
+    return this.portalService.getClientDocuments(slug, clientId);
+  }
 
-@Post(":slug/obligations/:obligationId/comprovante")
-@UseInterceptors(
-  FileInterceptor("file", {
-    storage: memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 },
-  })
-)
-async submitComprovante(
-  @Param("slug") slug: string,
-  @Param("obligationId") obligationId: string,
-  @Body("clientId") clientId: string,
-  @UploadedFile() file: Express.Multer.File,
-  @Req() req: Request,
-) {
-  return this.portalService.submitComprovante(slug, obligationId, clientId, file, req.userEmail!);
-}
+  @Post(":slug/obligations/:obligationId/comprovante")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+    })
+  )
+  async submitComprovante(
+    @Param("slug") slug: string,
+    @Param("obligationId") obligationId: string,
+    @Body("clientId") clientId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    // Permissão SUBMIT_COMPROVANTE é checada dentro do service
+    return this.portalService.submitComprovante(slug, obligationId, clientId, file, req.userEmail!);
+  }
 
-@Get(":slug/obligations/:clientId")
-async getObligations(
-  @Param("slug") slug: string,
-  @Param("clientId") clientId: string,
-  @Req() req: Request
-) {
-  await this.portalService.validateClientAccess(slug, clientId, req.userEmail!);
-  return this.portalService.getClientObligations(slug, clientId);
-}
+  @Get(":slug/obligations/:clientId")
+  async getObligations(
+    @Param("slug") slug: string,
+    @Param("clientId") clientId: string,
+    @Req() req: Request
+  ) {
+    await this.portalService.validatePortalPermission(slug, clientId, req.userEmail!, "VIEW_OBLIGATIONS");
+    return this.portalService.getClientObligations(slug, clientId);
+  }
 
-@Post(":slug/documents/:clientId/upload")
-@UseInterceptors(
-  FileInterceptor("file", {
-    storage: memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 },
-  })
-)
-async clientUpload(
-  @Param("slug") slug: string,
-  @Param("clientId") clientId: string,
-  @UploadedFile() file: Express.Multer.File,
-  @Req() req: Request,
-  @Body("description") description?: string
-) {
-  await this.portalService.validateClientAccess(slug, clientId, req.userEmail!);
-  return this.portalService.clientUpload(slug, clientId, file, description);
-}
+  @Post(":slug/documents/:clientId/upload")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+    })
+  )
+  async clientUpload(
+    @Param("slug") slug: string,
+    @Param("clientId") clientId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+    @Body("description") description?: string
+  ) {
+    await this.portalService.validatePortalPermission(slug, clientId, req.userEmail!, "UPLOAD_DOCUMENTS");
+    // req.userEmail agora é repassado: o log de auditoria do service usa esse valor
+    return this.portalService.clientUpload(slug, clientId, file, description, req.userEmail);
+  }
 
   @Get(":slug/documents/:documentId/download")
   async getDownloadUrl(
@@ -91,6 +93,7 @@ async clientUpload(
     @Param("documentId") documentId: string,
     @Req() req: Request
   ) {
+    // Permissão VIEW_DOCUMENTS é checada dentro do service
     return this.portalService.getClientDocumentDownloadUrl(slug, documentId, req.userEmail!);
   }
 
@@ -100,6 +103,7 @@ async clientUpload(
     @Param("documentId") documentId: string,
     @Req() req: Request
   ) {
+    // Permissão DELETE_OWN_DOCUMENTS é checada dentro do service
     return this.portalService.deleteClientDocument(slug, documentId, req.userEmail!);
   }
 
@@ -109,7 +113,7 @@ async clientUpload(
     @Param("clientId") clientId: string,
     @Req() req: Request
   ) {
-    await this.portalService.validateClientAccess(slug, clientId, req.userEmail!);
+    await this.portalService.validatePortalPermission(slug, clientId, req.userEmail!, "REVIEW_REPORTS");
     return this.portalService.getPendingReports(slug, clientId);
   }
 
@@ -120,6 +124,7 @@ async clientUpload(
     @Body("clientId") clientId: string,
     @Req() req: Request
   ) {
+    // Permissão REVIEW_REPORTS é checada dentro do reviewDocument
     return this.portalService.reviewDocument(slug, documentId, clientId, "APPROVED", req.userEmail!, undefined);
   }
 

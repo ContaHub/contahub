@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export * from './plans.config';
 export * from "./whatsapp.utils";
+export * from "./portal-permissions";
 export interface ApiResponse<T> { data: T; message?: string; }
 export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   meta: { page: number; limit: number; total: number; totalPages: number; };

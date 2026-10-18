@@ -5,7 +5,7 @@ import { useDialogA11y } from "@/hooks/useDialogA11y";
 import {
   Upload, Download, Trash2, FileText, FileImage, FileSpreadsheet,
   File, FileCode, Eye, FileInput, CheckCircle, AlertTriangle,
-  MessageSquare, X, Plus,
+  MessageSquare, X, Plus, UserCheck, UserX,
 } from "lucide-react";
 import {
   Card, Badge, Button, IconButton,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui";
 import { MobileHeader, useMobileMenu } from "@/components/layout/mobile-menu";
 import { UploadModal } from "@/components/documents/UploadModal";
-import { getDocuments, getDownloadUrl, deleteDocument, sendForReview } from "@/lib/documents";
+import { getDocuments, getDownloadUrl, deleteDocument, sendForReview, setDocumentVisibility } from "@/lib/documents";
 import { uploadNfeXml, formatValorNfe, NfeDocument } from "@/lib/nfe";
 import { useAuth } from "@clerk/nextjs";
 import { getClientDisplayName } from "@contahub/shared";
@@ -327,6 +327,7 @@ export default function DocumentsPage() {
   const [nfeModalOpen, setNfeModal]   = useState(false);
   const [activeTab, setActiveTab]     = useState<"docs" | "nfe">("docs");
   const [successMsg, setSuccessMsg]   = useState<string | null>(null);
+  const [errorMsg, setErrorMsg]       = useState<string | null>(null);
   const [nfeDetail, setNfeDetail]     = useState<NfeDocument | null>(null);
   const [nfeToDelete, setNfeToDelete] = useState<NfeDocument | null>(null);
   const [docToDelete, setDocToDelete] = useState<any | null>(null);
@@ -364,6 +365,19 @@ export default function DocumentsPage() {
       loadDocs();
     } catch (err: any) {
       console.error("Erro ao enviar para revisão:", err);
+    }
+  }
+
+  async function handleToggleVisibility(d: any) {
+    const next = d.visibleToClient === false; // estava oculto → passa a visível
+    try {
+      await setDocumentVisibility(d.id, next);
+      setSuccessMsg(next ? "Documento visível para o cliente." : "Documento oculto do cliente.");
+      setTimeout(() => setSuccessMsg(null), 4000);
+      loadDocs();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Não foi possível alterar a visibilidade.");
+      setTimeout(() => setErrorMsg(null), 5000);
     }
   }
 
@@ -428,6 +442,8 @@ export default function DocumentsPage() {
         {/* FIX-5: Toast sem emoji */}
         {successMsg && <Toast type="success" message={successMsg} onClose={() => setSuccessMsg(null)} />}
 
+        {errorMsg && <Toast type="warning" message={errorMsg} onClose={() => setErrorMsg(null)} />}
+
         {/* FIX-1 + FIX-3: Banner de revisão sem emoji */}
         {revisionCount > 0 && (
           <Toast
@@ -458,7 +474,7 @@ export default function DocumentsPage() {
         {activeTab === "docs" && (
           <Card>
             <div className="hidden md:block">
-              <div className="grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_72px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+              <div className="grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_120px] gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
                 {["Documento", "Cliente", "Status", "Data", ""].map((h) => (
                   <span key={h} className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.5px]">{h}</span>
                 ))}
@@ -474,7 +490,7 @@ export default function DocumentsPage() {
               )}
 
               {filtered.map((d) => (
-                <div key={d.id} className="group grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_72px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                <div key={d.id} className="group grid grid-cols-[2fr_1.4fr_0.9fr_0.9fr_120px] gap-3 items-center px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
                   {/* FIX-2: description como título, name como extensão */}
                   <div className="flex items-center gap-2.5 min-w-0">
                     <DocTypeIcon name={d.name} />
@@ -493,6 +509,9 @@ export default function DocumentsPage() {
                   {/* FIX-4: StatusBadge sem emoji + nota de revisão com ícone */}
                   <div>
                     <StatusBadge status={d.status} createdBy={d.createdBy} />
+                    {d.visibleToClient === false && !d.createdBy?.startsWith("client:") && (
+                      <p className="mt-1"><Badge variant="gray">Interno</Badge></p>
+                    )}
                     {d.status === "REVISION_REQUESTED" && d.reviewNotes && (
                       <p className="flex items-center gap-1 text-[11px] text-amber-600 mt-1 max-w-[200px] truncate" title={d.reviewNotes}>
                         <MessageSquare size={10} className="flex-shrink-0" />
@@ -519,6 +538,13 @@ export default function DocumentsPage() {
                     {!d.createdBy?.startsWith("client:") && (d.status === "UPLOADED" || d.status === "SENT") && (
                       <IconButton icon={FileInput} label="Enviar para revisão" onClick={() => handleSendReview(d.id)} />
                     )}
+                    {!d.createdBy?.startsWith("client:") && d.status !== "UNDER_REVIEW" && (
+                      <IconButton
+                        icon={d.visibleToClient === false ? UserCheck : UserX}
+                        label={d.visibleToClient === false ? "Mostrar ao cliente" : "Ocultar do cliente"}
+                        onClick={() => handleToggleVisibility(d)}
+                      />
+                    )}
                     {!d.createdBy?.startsWith("client:") && (
                       <IconButton icon={Trash2} variant="danger" label="Remover" onClick={() => setDocToDelete(d)} />
                     )}
@@ -542,7 +568,12 @@ export default function DocumentsPage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <StatusBadge status={d.status} createdBy={d.createdBy} />
+                    <div className="flex items-center gap-1.5">
+                      <StatusBadge status={d.status} createdBy={d.createdBy} />
+                      {d.visibleToClient === false && !d.createdBy?.startsWith("client:") && (
+                        <Badge variant="gray">Interno</Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <IconButton
                         icon={Eye}
@@ -557,6 +588,14 @@ export default function DocumentsPage() {
                           }
                         }}
                       />
+                      {!d.createdBy?.startsWith("client:") && d.status !== "UNDER_REVIEW" && (
+                        <IconButton
+                          icon={d.visibleToClient === false ? UserCheck : UserX}
+                          label={d.visibleToClient === false ? "Mostrar ao cliente" : "Ocultar do cliente"}
+                          size={13}
+                          onClick={() => handleToggleVisibility(d)}
+                        />
+                      )}
                       {!d.createdBy?.startsWith("client:") && (
                         <IconButton icon={Trash2} variant="danger" label="Remover" size={13} onClick={() => setDocToDelete(d)} />
                       )}

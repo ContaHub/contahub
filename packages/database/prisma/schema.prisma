@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")   // pooler 6543 — usado pela aplicação
+  directUrl = env("DIRECT_URL")     // direta 5432 — usada pelo migrate
 }
 
 enum UserRole {
@@ -157,6 +158,7 @@ model Client {
   state         String?
   portalEnabled Boolean      @default(false)
   portalEmail   String?
+  portalPermissions String[] @default(["VIEW_DOCUMENTS", "UPLOAD_DOCUMENTS", "DELETE_OWN_DOCUMENTS", "VIEW_OBLIGATIONS", "SUBMIT_COMPROVANTE", "REVIEW_REPORTS"])
   notes         String?
   tags             String[]
   cnpjStatus       String?   // "ATIVA", "INAPTA", "BAIXADA", "SUSPENSA", "NULA"
@@ -239,6 +241,7 @@ model Document {
   name        String
   description String?
   status      DocumentStatus @default(PENDING_UPLOAD)
+  visibleToClient Boolean @default(true)
   storageKey  String?
   storageUrl  String?
   mimeType    String?

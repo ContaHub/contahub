@@ -9,6 +9,8 @@ export interface Document {
   sizeBytes?: number;
   storageKey?: string;
   createdAt: string;
+  createdBy?: string;
+  visibleToClient?: boolean;
   client: { id: string; name: string };
 }
 
@@ -40,11 +42,37 @@ export async function deleteDocument(id: string): Promise<void> {
   // Não tenta parsear JSON — DELETE retorna body vazio
 }
 
+// Mostra ou oculta um documento do portal do cliente
+export async function setDocumentVisibility(
+  id: string,
+  visible: boolean,
+): Promise<{ message: string }> {
+  const tokenRes = await fetch("/api/auth/token");
+  const { token } = await tokenRes.json();
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+  const res = await fetch(`${API_URL}/api/v1/documents/${id}/visibility`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: JSON.stringify({ visible }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: "Erro ao alterar visibilidade" }));
+    throw new Error(error.message);
+  }
+  return res.json();
+}
+
 // Upload via FormData — não usa apiFetch pois precisa de multipart
 export async function uploadDocument(
   file: File,
   clientId: string,
-  description?: string
+  description?: string,
+  visibleToClient: boolean = true,
 ): Promise<{ data: Document; message: string }> {
   const tokenRes = await fetch("/api/auth/token");
   const { token } = await tokenRes.json();
@@ -53,6 +81,7 @@ export async function uploadDocument(
   formData.append("file", file);
   formData.append("clientId", clientId);
   if (description) formData.append("description", description);
+  formData.append("visibleToClient", String(visibleToClient));
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
   const res = await fetch(`${API_URL}/api/v1/documents/upload`, {

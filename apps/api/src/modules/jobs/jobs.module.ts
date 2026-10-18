@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { QUEUES } from '@contahub/shared';
 import { JobsProducerService } from './jobs-producer.service';
 import { JobsController } from './jobs.controller';
+import { PortalNoticesService } from "./portal-notices.service";
 
 /**
  * Módulo de jobs no contexto da API.
@@ -19,8 +20,9 @@ import { JobsController } from './jobs.controller';
       { name: QUEUES.CNPJ_SCAN },
     ),
   ],
-  providers: [JobsProducerService],
+  providers: [JobsProducerService, PortalNoticesService],
   controllers: [JobsController],
-  exports: [JobsProducerService],
+  exports:   [JobsProducerService, PortalNoticesService],
+
 })
 export class JobsModule {}

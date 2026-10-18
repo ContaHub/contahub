@@ -41,3 +41,111 @@ export function buildPortalWelcomeWhatsapp({
     `Use o e-mail cadastrado no escritório para entrar.`,
   ].join("\n");
 }
+
+// ─── Avisos do portal: documentos e obrigações ───────────────────────────────
+// Regra: a mensagem avisa que há novidade e leva ao portal. Nunca inclui valores.
+
+const MAX_LABEL = 80;
+
+// O texto digitado pelo escritório não pode quebrar a formatação do WhatsApp
+// (*negrito*, _itálico_) nem alongar a mensagem.
+function cleanLabel(text?: string | null): string {
+  if (!text) return "";
+  const flat = text.replace(/[*_~`]/g, "").replace(/\s+/g, " ").trim();
+  return flat.length > MAX_LABEL ? `${flat.slice(0, MAX_LABEL - 1)}…` : flat;
+}
+
+function portalLink(portalUrl: string, path: string): string {
+  return `${portalUrl.replace(/\/+$/, "")}/${path}`;
+}
+
+interface PortalNoticeBase {
+  recipientName: string;
+  workspaceName: string;
+  /** URL base do portal do escritório: https://.../portal/{slug} */
+  portalUrl: string;
+}
+
+export interface DocumentNoticeInput extends PortalNoticeBase {
+  /** Descrição ou nome do arquivo. Só é exibido quando count === 1. */
+  documentLabel?: string | null;
+  /** Quantidade de documentos agrupados no aviso (padrão 1). */
+  count?: number;
+}
+
+// Documento novo disponível para consulta (aba Documentos)
+export function buildDocumentSharedWhatsapp({
+  recipientName,
+  workspaceName,
+  portalUrl,
+  documentLabel,
+  count = 1,
+}: DocumentNoticeInput): string {
+  const label = cleanLabel(documentLabel);
+  const headline =
+    count > 1
+      ? `disponibilizou *${count} novos documentos* no seu portal.`
+      : `disponibilizou *um novo documento* no seu portal${label ? `: ${label}` : "."}`;
+
+  return [
+    `Olá, ${recipientName}! 👋`,
+    ``,
+    `O *${workspaceName}* ${headline}`,
+    ``,
+    `🔗 Acesse: ${portalLink(portalUrl, "documents")}`,
+  ].join("\n");
+}
+
+// Documento aguardando aprovação do cliente (aba Documentos Para Aprovação)
+export function buildDocumentForReviewWhatsapp({
+  recipientName,
+  workspaceName,
+  portalUrl,
+  documentLabel,
+  count = 1,
+}: DocumentNoticeInput): string {
+  const label = cleanLabel(documentLabel);
+  const headline =
+    count > 1
+      ? `enviou *${count} documentos* para a sua aprovação.`
+      : `enviou *um documento* para a sua aprovação${label ? `: ${label}` : "."}`;
+
+  return [
+    `Olá, ${recipientName}! 👋`,
+    ``,
+    `O *${workspaceName}* ${headline}`,
+    ``,
+    `Revise e aprove pelo portal:`,
+    `🔗 ${portalLink(portalUrl, "reports")}`,
+  ].join("\n");
+}
+
+export interface ObligationNoticeInput extends PortalNoticeBase {
+  /** Tipo da obrigação como o projeto exibe: "DAS", "DARF"... */
+  obligationType: string;
+  /** "05/2026" */
+  competence: string;
+  /** "30/05/2026" */
+  dueDate: string;
+}
+
+// Obrigação nova lançada pelo escritório (aba Obrigações). Sem valor, de propósito.
+export function buildObligationCreatedWhatsapp({
+  recipientName,
+  workspaceName,
+  portalUrl,
+  obligationType,
+  competence,
+  dueDate,
+}: ObligationNoticeInput): string {
+  return [
+    `Olá, ${recipientName}! 👋`,
+    ``,
+    `O *${workspaceName}* lançou uma nova obrigação para você:`,
+    ``,
+    `📋 *${cleanLabel(obligationType)}* — competência ${competence}`,
+    `📅 Vencimento: ${dueDate}`,
+    ``,
+    `🔗 Detalhes: ${portalLink(portalUrl, "obligations")}`,
+  ].join("\n");
+}

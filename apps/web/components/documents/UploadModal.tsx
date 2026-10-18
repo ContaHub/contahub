@@ -24,9 +24,10 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
   const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useDialogA11y(onClose);
+  const [visibleToClient, setVisibleToClient] = useState(true);
 
   useEffect(() => {
-            getClients({ limit: 100 }).then((res) =>
+      getClients({ limit: 100 }).then((res) =>
       // Só clientes ativos podem receber obrigação nova. No modo edição, mantém o cliente
       // da obrigação mesmo se estiver inativo: o select é desabilitado e precisa dessa opção
       // para exibir o nome em vez de ficar em branco.
@@ -34,7 +35,7 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
         res.data.filter((c) => c.status === "ACTIVE" )
       )
     );
-  });
+  }, []);
 
   function handleFileDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -51,7 +52,7 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
 
     try {
       setProgress(60);
-      await uploadDocument(file, clientId, description || undefined);
+      await uploadDocument(file, clientId, description || undefined, visibleToClient);
       setProgress(100);
       onSuccess();
       onClose();
@@ -163,6 +164,25 @@ export function UploadModal({ preselectedClientId, onClose, onSuccess }: UploadM
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* Visibilidade no portal */}
+          <label htmlFor="visible-to-client" className="flex items-start gap-2 cursor-pointer">
+            <input
+              id="visible-to-client"
+              type="checkbox"
+              checked={visibleToClient}
+              onChange={(e) => setVisibleToClient(e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-700">
+                Visível para o cliente no portal
+              </span>
+              <span className="block text-xs text-gray-400">
+                Desmarque para guardar como documento interno do escritório.
+              </span>
+            </span>
+          </label>
 
           {/* Barra de progresso */}
           {loading && (

@@ -33,11 +33,12 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    ".next_bkp/types/**/*.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules", 
-    "e2e", 
+    "node_modules",
+    "e2e",
     "playwright.config.ts"
   ]
 }

@@ -13,6 +13,7 @@ export interface Client {
   whatsapp?: string;
   portalEnabled?: boolean;
   portalEmail?: string;
+  portalPermissions?: string[];
   notes?: string;
   tags:            string[];
   cnpjStatus?:     string | null;

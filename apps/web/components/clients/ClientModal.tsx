@@ -4,6 +4,12 @@ import { useState, useId } from "react";
 import { createClient, updateClient, Client, TAX_REGIME_LABELS } from "@/lib/clients";
 import { ptBRValidity, clearValidity } from "@/lib/formValidation";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import {
+  PORTAL_PERMISSIONS,
+  PORTAL_PERMISSION_LABELS,
+  PORTAL_PRESETS,
+} from "@contahub/shared";
+import type { PortalPermission, PortalPresetKey } from "@contahub/shared";
 
 interface ClientModalProps {
   client?: Client;
@@ -36,6 +42,18 @@ function maskCpf(value: string): string {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 }
 
+const DEFAULT_PERMISSIONS: PortalPermission[] = [...PORTAL_PRESETS.STANDARD.permissions];
+
+// Descobre qual preset bate com a lista atual; se nenhum, é "CUSTOM".
+function detectPreset(perms: readonly string[]): PortalPresetKey | "CUSTOM" {
+  const set = new Set(perms);
+  for (const key of Object.keys(PORTAL_PRESETS) as PortalPresetKey[]) {
+    const preset = PORTAL_PRESETS[key].permissions;
+    if (preset.length === set.size && preset.every((p) => set.has(p))) return key;
+  }
+  return "CUSTOM";
+}
+
 export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -66,6 +84,7 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
     // ── Portal do cliente ──
     portalEnabled: client?.portalEnabled ?? false,
     portalEmail: client?.portalEmail || "",
+    portalPermissions: (client?.portalPermissions ?? DEFAULT_PERMISSIONS) as PortalPermission[],
   });
 
   function handleChange(
@@ -75,7 +94,14 @@ export function ClientModal({ client, onClose, onSuccess }: ClientModalProps) {
 
     if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
-      setForm((prev) => ({ ...prev, [name]: checked }));
+      setForm((prev) => ({
+        ...prev,
+        [name]: checked,
+        // Ao ligar o portal, sugere o e-mail de contato como e-mail de login
+        ...(name === "portalEnabled" && checked && !prev.portalEmail && prev.email
+          ? { portalEmail: prev.email }
+          : {}),
+      }));
       return;
     }
 
@@ -137,10 +163,25 @@ async function fetchCnpjData(cnpj: string) {
       taxRegime: type === "PF" ? "ISENTO" : "SIMPLES_NACIONAL",
       email: "", phone: "", whatsapp: "",
       zipCode: "", street: "", city: "", state: "", notes: client?.notes || "",
-      portalEnabled: false, portalEmail: "",
+      portalEnabled: false, portalEmail: "",portalPermissions: DEFAULT_PERMISSIONS,
     });
     setCnpjFound(false);
   }
+
+  function applyPreset(key: PortalPresetKey) {
+  setForm((prev) => ({ ...prev, portalPermissions: [...PORTAL_PRESETS[key].permissions] }));
+}
+
+function togglePermission(p: PortalPermission) {
+  setForm((prev) => ({
+    ...prev,
+    portalPermissions: prev.portalPermissions.includes(p)
+      ? prev.portalPermissions.filter((x) => x !== p)
+      : [...prev.portalPermissions, p],
+  }));
+}
+
+const currentPreset = detectPreset(form.portalPermissions);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -149,7 +190,16 @@ async function fetchCnpjData(cnpj: string) {
 
     // Validação: se portal habilitado, e-mail é obrigatório
     if (form.portalEnabled && !form.portalEmail) {
-      setError("Informe o e-mail de acesso ao portal do cliente.");
+      setError(
+        "Informe o e-mail de login do cliente no portal. É com ele que o cliente entra, mesmo que o link seja enviado pelo WhatsApp."
+      );
+      setLoading(false);
+      document.getElementById("portalEmail")?.focus();
+      return;
+    }
+
+    if (form.portalEnabled && form.portalPermissions.length === 0) {
+      setError("Selecione ao menos uma permissão para o cliente no portal.");
       setLoading(false);
       return;
     }
@@ -168,6 +218,7 @@ async function fetchCnpjData(cnpj: string) {
         // ── Portal ──
         portalEnabled: form.portalEnabled,
         portalEmail: form.portalEnabled ? form.portalEmail : undefined,
+        portalPermissions: form.portalEnabled ? form.portalPermissions : undefined,
       };
 
       if (client) {
@@ -215,7 +266,7 @@ async function fetchCnpjData(cnpj: string) {
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+            <div role="alert" className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
               {error}
             </div>
           )}
@@ -364,7 +415,7 @@ async function fetchCnpjData(cnpj: string) {
               <div>
                 <p className="text-sm font-medium text-gray-700">Habilitar acesso ao portal</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  O cliente receberá um e-mail com o link de acesso
+                  O link de acesso é enviado para o WhatsApp cadastrado do cliente
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -379,27 +430,80 @@ async function fetchCnpjData(cnpj: string) {
               </label>
             </div>
 
-            {/* Campo portalEmail — só aparece se portal habilitado */}
             {form.portalEnabled && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  E-mail de acesso ao portal *
-                </label>
-                <input
-                  name="portalEmail"
-                  type="email"
-                  value={form.portalEmail}
-                  onChange={handleChange}
-                  required={form.portalEnabled}
-                  onInvalid={ptBRValidity}
-                  onInput={clearValidity}
-                  placeholder="cliente@email.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  O cliente usará este e-mail para acessar o portal
-                </p>
-              </div>
+              <>
+                {/* E-mail de login */}
+                <div>
+                  <label htmlFor="portalEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                    E-mail de login no portal *
+                  </label>
+                  <input
+                    id="portalEmail"
+                    name="portalEmail"
+                    type="email"
+                    value={form.portalEmail}
+                    onChange={handleChange}
+                    required={form.portalEnabled}
+                    placeholder="cliente@email.com"
+                    onInvalid={ptBRValidity}
+                    onInput={clearValidity}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    É o e-mail com que o cliente faz login. O link de acesso vai pelo WhatsApp.
+                  </p>
+                </div>
+
+                {/* Permissões */}
+                <fieldset className="mt-4">
+                  <legend className="block text-sm font-medium text-gray-700 mb-2">
+                    Permissões do cliente no portal
+                  </legend>
+
+                  <div className="grid grid-cols-3 gap-2 mb-2" role="group" aria-label="Perfis de acesso">
+                    {(Object.keys(PORTAL_PRESETS) as PortalPresetKey[]).map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => applyPreset(key)}
+                        aria-pressed={currentPreset === key}
+                        className={`px-2 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                          currentPreset === key
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        {PORTAL_PRESETS[key].label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-gray-400 mb-3">
+                    {currentPreset === "CUSTOM"
+                      ? "Personalizado — ajuste as permissões abaixo."
+                      : PORTAL_PRESETS[currentPreset].description}
+                  </p>
+
+                  <div className="space-y-2">
+                    {PORTAL_PERMISSIONS.map((p) => (
+                      <label
+                        key={p}
+                        htmlFor={`perm-${p}`}
+                        className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"
+                      >
+                        <input
+                          id={`perm-${p}`}
+                          type="checkbox"
+                          checked={form.portalPermissions.includes(p)}
+                          onChange={() => togglePermission(p)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {PORTAL_PERMISSION_LABELS[p]}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
             )}
           </div>
 

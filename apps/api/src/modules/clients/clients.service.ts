@@ -4,6 +4,7 @@ import { CreateClientDto } from "./dto/create-client.dto";
 //import { CreateClientFreeDto } from "./dto/create-client-free.dto";
 import { UpdateClientDto, ListClientsDto } from "./dto/update-client.dto";
 import { JobsProducerService } from "../jobs/jobs-producer.service";
+import { PORTAL_PRESETS } from "@contahub/shared";
 
 // Campos mínimos que o envio de boas-vindas precisa de um cliente
 interface PortalWelcomeTarget {
@@ -48,7 +49,15 @@ export class ClientsService {
     const existing = await prisma.client.findUnique({ where: { workspaceId_cnpj: { workspaceId, cnpj: dto.cnpj } } });
     if (existing) throw new ConflictException("CNPJ já cadastrado");
 
-    const client = await prisma.client.create({ data: { workspaceId, ...dto } as any });
+    const client = await prisma.client.create({
+      data: {
+        workspaceId,
+        ...dto,
+        // Sem escolha explícita, o cliente novo nasce com o preset Padrão
+        // (e não com o default do banco, que libera tudo).
+        portalPermissions: dto.portalPermissions ?? [...PORTAL_PRESETS.STANDARD.permissions],
+      } as any,
+    });
     this.logger.log(`Cliente criado: ${client.id}`);
 
     await this.sendPortalWelcome(workspaceId, client);

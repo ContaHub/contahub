@@ -1,5 +1,28 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
+import type { PortalPermission } from "@contahub/shared";
+export interface PortalClient {
+  id: string;
+  name: string;
+  cnpj: string;
+  taxRegime: string;
+  portalPermissions: PortalPermission[];
+}
+
+// Busca o cliente do portal pelo e-mail do usuário logado (Protegida)
+export async function getPortalClientByEmail(
+  slug: string,
+  email: string,
+  token: string,
+): Promise<{ data: PortalClient }> {
+  const res = await fetch(
+    `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+  );
+  if (!res.ok) throw new Error("Acesso ao portal indisponível");
+  return res.json();
+}
+
 export interface WorkspacePublic {
   id: string;
   name: string;
@@ -16,6 +39,7 @@ export interface PortalDocument {
   mimeType?: string;
   sizeBytes?: number;
   createdAt: string;
+  uploadedByClient?: boolean;
 }
 
 export interface PortalObligation {

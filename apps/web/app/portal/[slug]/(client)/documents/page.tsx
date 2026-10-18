@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import { usePortalClient } from "@/components/portal/PortalClientProvider";
 import {
   getPortalDocuments, getPortalClientDownloadUrl,
   PortalDocument, formatFileSize,
@@ -51,8 +52,9 @@ const STATUS_LABELS: Record<string, { label: string; class: string }> = {
 export default function ClientDocumentsPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { user } = useUser();
   const { getToken } = useAuth();
+  const { client, can } = usePortalClient();
+  const clientId = client?.id ?? "";  
 
   const [documents, setDocuments] = useState<PortalDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +62,6 @@ export default function ClientDocumentsPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<PortalDocument | null>(null);
   const [deleteError, setDeleteError] = useState("");
-  const [clientId, setClientId] = useState("");
 
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState("");
@@ -79,26 +80,16 @@ export default function ClientDocumentsPage() {
 
   useEffect(() => {
     async function load() {
-      const email = user?.primaryEmailAddress?.emailAddress;
-      if (!email) return;
       try {
         const token = await getToken();
-        if (!token) return;
-
-        const res = await fetch(
-          `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!res.ok) return;
-        const { data } = await res.json();
-        setClientId(data.id);
-        await loadDocuments(data.id, token);
+        if (!token || !client) return;
+        await loadDocuments(client.id, token);
       } finally {
         setLoading(false);
       }
     }
-    if (user) load();
-  }, [user, slug]);
+    load();
+  }, [client?.id, slug]);
 
   async function handleDownload(doc: PortalDocument) {
     setDownloading(doc.id);
@@ -238,68 +229,70 @@ export default function ClientDocumentsPage() {
       </div>
 
       {/* Upload */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-1">Enviar documento ao escritório</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Envie extratos, notas fiscais ou qualquer documento para o seu contador.
-        </p>
-        <div className="space-y-3">
-          <select
-            value={docType}
-            onChange={(e) => setDocType(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
-          >
-            <option value="">Tipo de documento (opcional)</option>
-            <option value="Extrato Bancário">Extrato Bancário</option>
-            <option value="Nota Fiscal">Nota Fiscal</option>
-            <option value="Contrato">Contrato</option>
-            <option value="Comprovante de Pagamento">Comprovante de Pagamento</option>
-            <option value="Declaração">Declaração</option>
-            <option value="Outros">Outros</option>
-          </select>
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descrição (ex: Extrato bancário maio/2026)"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors"
-          >
+      {can("UPLOAD_DOCUMENTS") && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="font-semibold text-gray-900 mb-1">Enviar documento ao escritório</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Envie extratos, notas fiscais ou qualquer documento para o seu contador.
+          </p>
+          <div className="space-y-3">
+            <select
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
+            >
+              <option value="">Tipo de documento (opcional)</option>
+              <option value="Extrato Bancário">Extrato Bancário</option>
+              <option value="Nota Fiscal">Nota Fiscal</option>
+              <option value="Contrato">Contrato</option>
+              <option value="Comprovante de Pagamento">Comprovante de Pagamento</option>
+              <option value="Declaração">Declaração</option>
+              <option value="Outros">Outros</option>
+            </select>
             <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xml"
-              onChange={handleUpload}
-              disabled={uploadLoading}
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descrição (ex: Extrato bancário maio/2026)"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            {uploadLoading ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-blue-600">Enviando...</span>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.xml"
+                onChange={handleUpload}
+                disabled={uploadLoading}
+              />
+              {uploadLoading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-blue-600">Enviando...</span>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Arraste o arquivo aqui ou clique para selecionar</p>
+                  <p className="text-xs text-gray-400 mt-1">PDF, imagens, Excel, XML — máx. 10MB</p>
+                </div>
+              )}
+            </div>
+            {uploadSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">
+                {uploadSuccess}
               </div>
-            ) : (
-              <div>
-                <p className="text-sm font-medium text-gray-600">Arraste o arquivo aqui ou clique para selecionar</p>
-                <p className="text-xs text-gray-400 mt-1">PDF, imagens, Excel, XML — máx. 10MB</p>
+            )}
+            {uploadError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+                {uploadError}
               </div>
             )}
           </div>
-          {uploadSuccess && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">
-              {uploadSuccess}
-            </div>
-          )}
-          {uploadError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-              {uploadError}
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Lista */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -381,7 +374,7 @@ export default function ClientDocumentsPage() {
                       {downloading === doc.id ? "..." : "Visualizar"}
                     </button>
                     {/* Botão remover — só aparece para docs enviados pelo cliente */}
-                    {isByClient && (
+                    {isByClient && can("DELETE_OWN_DOCUMENTS") && (
                       <button
                         onClick={() => handleDelete(doc)}
                         disabled={deleting === doc.id}

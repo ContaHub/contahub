@@ -3,9 +3,11 @@ import {
   NotFoundException,
   UnauthorizedException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from "@nestjs/common";
 import { prisma } from "@contahub/database";
+import type { PortalPermission } from "@contahub/shared";
 import { SupabaseService } from "../../common/services/supabase.service";
 import { WahaService } from "../../common/services/waha.service";
  
@@ -41,6 +43,20 @@ export class PortalService {
     private readonly supabase: SupabaseService,
     private readonly waha: WahaService,
   ) {}
+
+    /**
+   * Regra de visibilidade no portal: o cliente vê o que ele mesmo enviou
+   * e o que o escritório marcou como visível.
+   * `any` por causa do ts-node, que não reconhece campos novos do Prisma
+   * (problema conhecido do projeto).
+   */
+  private readonly clientVisible: any = {
+    OR: [
+      { createdBy: { startsWith: "client:" } },
+      { visibleToClient: true },
+      { status: "UNDER_REVIEW" },   // ← em revisão sempre aparece para o cliente
+    ],
+  };
  
   async getWorkspaceBySlug(slug: string) {
     this.logger.log(`[getWorkspaceBySlug] slug=${slug}`);
@@ -62,7 +78,9 @@ export class PortalService {
       select: { id: true, name: true, cnpj: true, taxRegime: true },
     });
     if (!client) throw new UnauthorizedException("Acesso não autorizado");
-    return { data: client };
+
+    const portalPermissions = await this.getPermissions(client.id);
+    return { data: { ...client, portalPermissions } };
   }
  
   async getClientDocuments(workspaceSlug: string, clientId: string) {
@@ -70,19 +88,26 @@ export class PortalService {
     const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
     if (!workspace) throw new NotFoundException("Escritório não encontrado");
  
-    const documents = await prisma.document.findMany({
+    const rows = await prisma.document.findMany({
       where: {
         workspaceId: workspace.id,
         clientId,
         status: { in: ["UPLOADED", "APPROVED", "UNDER_REVIEW"] },
+        AND: [this.clientVisible],
       },
       select: {
         id: true, name: true, description: true,
         status: true, mimeType: true, sizeBytes: true,
-        createdAt: true, storageKey: true, createdBy: true,
+        createdAt: true, createdBy: true,
       },
       orderBy: { createdAt: "desc" },
     });
+
+    // createdBy é usado só aqui para derivar a origem; storageKey nem sai do banco.
+    const documents = rows.map(({ createdBy, ...doc }) => ({
+      ...doc,
+      uploadedByClient: createdBy?.startsWith("client:") ?? false,
+    }));
     return { data: documents };
   }
 
@@ -92,12 +117,25 @@ export class PortalService {
   if (!workspace) throw new NotFoundException("Escritório não encontrado");
 
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, workspaceId: workspace.id },
+    where: { id: documentId, workspaceId: workspace.id, AND: [this.clientVisible] },
   });
   if (!doc?.storageKey) throw new NotFoundException("Documento não encontrado");
 
-  // [FIX-02] Valida que o cliente é proprietário deste documento
+    // Posse do documento: confirma QUEM é o cliente
   await this.validateClientAccess(workspaceSlug, doc.clientId, currentUserEmail);
+
+  // Regra de visualização: VIEW_DOCUMENTS libera qualquer documento do cliente.
+  // REVIEW_REPORTS libera só os que estão em revisão (revisar pressupõe poder abrir).
+  const granted = await this.getPermissions(doc.clientId);
+  const canView =
+    granted.includes("VIEW_DOCUMENTS") ||
+    (doc.status === "UNDER_REVIEW" && granted.includes("REVIEW_REPORTS"));
+
+  if (!canView) {
+    throw new ForbiddenException(
+      "Seu acesso ao portal não permite esta ação. Fale com o seu escritório contábil.",
+    );
+  }
 
   const url = await this.supabase.getSignedUrl(doc.storageKey);
   if (!url) throw new BadRequestException("Erro ao gerar URL de download");
@@ -111,7 +149,7 @@ export class PortalService {
     if (!workspace) throw new NotFoundException("Escritório não encontrado");
  
     const reports = await prisma.document.findMany({
-      where: { workspaceId: workspace.id, clientId, status: "UNDER_REVIEW" },
+            where: { workspaceId: workspace.id, clientId, status: "UNDER_REVIEW", AND: [this.clientVisible] },
       select: { id: true, name: true, description: true, mimeType: true, sizeBytes: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     });
@@ -145,7 +183,7 @@ export class PortalService {
 ) {
   this.logger.log(`[submitComprovante] slug=${workspaceSlug} obligationId=${obligationId} clientId=${clientId}`);
 
-  await this.validateClientAccess(workspaceSlug, clientId, currentUserEmail);
+  await this.validatePortalPermission(workspaceSlug, clientId, currentUserEmail, "SUBMIT_COMPROVANTE");
 
   const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
   if (!workspace) throw new NotFoundException("Escritório não encontrado");
@@ -278,13 +316,12 @@ export class PortalService {
     });
  
     if (!doc) throw new NotFoundException("Documento não encontrado ou sem permissão para remover");
-    // Adicionar aqui:
+
+    await this.validatePortalPermission(workspaceSlug, doc.clientId, currentUserEmail, "DELETE_OWN_DOCUMENTS");
+
     this.logger.warn(
       `🗑 Portal — Removido — "${doc.name}" | Cliente: ${doc.clientId} | Por: ${currentUserEmail}`,
     );
- 
-    // [FIX-02] Valida que o cliente é proprietário deste documento
-    await this.validateClientAccess(workspaceSlug, doc.clientId, currentUserEmail);
 
     if (doc.storageKey) {
       await this.supabase.delete(doc.storageKey);
@@ -304,8 +341,7 @@ export class PortalService {
   ) {
     this.logger.log(`[reviewDocument] slug=${workspaceSlug} docId=${documentId} action=${action}`);
     
-    // [FIX-02] Valida que o cliente tem acesso à conta solicitada
-    await this.validateClientAccess(workspaceSlug, clientId, currentUserEmail);
+    await this.validatePortalPermission(workspaceSlug, clientId, currentUserEmail, "REVIEW_REPORTS");
 
     const workspace = await prisma.workspace.findUnique({ where: { slug: workspaceSlug } });
     if (!workspace) throw new NotFoundException("Escritório não encontrado");
@@ -387,6 +423,49 @@ export class PortalService {
         "Você não tem permissão para acessar os dados deste cliente."
       );
     }
+  }
+
+    /**
+   * Lê as permissões do cliente via $queryRaw tipado.
+   * Por quê: o ts-node não reconhece campos novos do Prisma após generate
+   * (workaround documentado no projeto).
+   */
+  /** Lê as permissões do cliente (via $queryRaw tipado, por causa do ts-node). */
+  private async getPermissions(clientId: string): Promise<string[]> {
+    const rows = await prisma.$queryRaw<{ portalPermissions: string[] }[]>`
+      SELECT "portalPermissions"
+      FROM "public"."Client"
+      WHERE id = ${clientId}
+      LIMIT 1
+    `;
+    return rows[0]?.portalPermissions ?? [];
+  }
+
+  private async assertPermission(
+    clientId: string,
+    permission: PortalPermission,
+  ): Promise<void> {
+    const granted = await this.getPermissions(clientId);
+
+    if (!granted.includes(permission)) {
+      throw new ForbiddenException(
+        "Seu acesso ao portal não permite esta ação. Fale com o seu escritório contábil.",
+      );
+    }
+  }
+
+  /**
+   * Autenticação/posse (validateClientAccess) + permissão da ação.
+   * Ordem importa: primeiro confirma QUEM é o cliente, depois O QUE ele pode fazer.
+   */
+  async validatePortalPermission(
+    workspaceSlug: string,
+    clientId: string,
+    currentUserEmail: string,
+    permission: PortalPermission,
+  ): Promise<void> {
+    await this.validateClientAccess(workspaceSlug, clientId, currentUserEmail);
+    await this.assertPermission(clientId, permission);
   }
 }
 

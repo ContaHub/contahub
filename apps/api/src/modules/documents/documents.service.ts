@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from "@nestjs/common";
 import { prisma } from "@contahub/database";
 import { SupabaseService } from "../../common/services/supabase.service";
+import { PortalNoticesService } from "../jobs/portal-notices.service";
 
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
@@ -29,7 +30,10 @@ function validateFileType(file: Express.Multer.File): void {
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
 
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly notices: PortalNoticesService,
+  ) {}
 
   async findAll(workspaceId: string, clientId?: string) {
     const documents = await prisma.document.findMany({
@@ -64,6 +68,7 @@ export class DocumentsService {
     file: Express.Multer.File,
     createdBy: string,
     description?: string,
+    visibleToClient: boolean = true,
   ) {
     validateFileType(file);
     if (file.size > MAX_FILE_SIZE) throw new BadRequestException("Arquivo muito grande. Máximo: 10MB");
@@ -88,13 +93,24 @@ export class DocumentsService {
         mimeType: file.mimetype,
         sizeBytes: file.size,
         createdBy,
-      },
+        visibleToClient,
+      } as any,
       include: { client: { select: { id: true, name: true, tradeName: true } } },
     });
 
     this.logger.log(
       `📎 Upload — "${file.originalname}" (${(file.size / 1024).toFixed(1)} KB) | Cliente: ${client.tradeName} | Por: ${createdBy}`,
     );
+
+    // Só avisa se o cliente de fato vai ver o documento (a caixa "Visível para o cliente")
+    if (visibleToClient) {
+      await this.notices.notifyDocumentShared({
+        workspaceId,
+        clientId,
+        documentId: document.id,
+        documentLabel: description || file.originalname,
+      });
+    }
 
     return { data: document, message: "Documento enviado com sucesso" };
   }
@@ -117,7 +133,7 @@ export class DocumentsService {
 
     const updated = await prisma.document.update({
       where: { id },
-      data: { status: "UNDER_REVIEW" },
+      data: { status: "UNDER_REVIEW", visibleToClient: true } as any,   // ← visibleToClient: true
       include: { client: { select: { id: true, name: true, tradeName: true } } },
     });
 
@@ -125,6 +141,61 @@ export class DocumentsService {
       `Enviado para revisão — "${doc.name}" | Cliente: ${doc.client?.tradeName ?? doc.clientId}`,
     );
 
+        await this.notices.notifyDocumentForReview({
+      workspaceId,
+      clientId: doc.clientId,
+      documentId: id,
+      documentLabel: doc.description || doc.name,
+    });
+
     return { data: updated, message: "Documento enviado para aprovação do cliente" };
+  }
+
+    async setVisibility(workspaceId: string, id: string, visible: boolean) {
+    const { data: doc } = await this.findOne(workspaceId, id);
+
+    // O que o cliente enviou ele sempre vê (regra do filtro do portal)
+    if (doc.createdBy?.startsWith("client:")) {
+      throw new BadRequestException(
+        "Documentos enviados pelo cliente sempre ficam visíveis para ele.",
+      );
+    }
+
+    // Esconder um documento em revisão o tiraria da aba de aprovação do cliente
+    if (!visible && doc.status === "UNDER_REVIEW") {
+      throw new BadRequestException(
+        "Documento em revisão precisa ficar visível para o cliente.",
+      );
+    }
+
+    // (depois das duas validações e antes do prisma.document.update)
+    const wasHidden = (doc as any).visibleToClient === false;
+
+    const updated = await prisma.document.update({
+      where: { id },
+      data: { visibleToClient: visible } as any,
+      include: { client: { select: { id: true, name: true, tradeName: true } } },
+    });
+
+    this.logger.log(
+      `${visible ? "Visível" : "Oculto"} no portal — "${doc.name}" | Cliente: ${doc.client?.tradeName ?? doc.clientId}`,
+    );
+
+        // (depois do update e do logger, antes do return)
+    if (visible && wasHidden) {
+      await this.notices.notifyDocumentShared({
+        workspaceId,
+        clientId: doc.clientId,
+        documentId: id,
+        documentLabel: doc.description || doc.name,
+      });
+    }
+
+    return {
+      data: updated,
+      message: visible
+        ? "Documento visível para o cliente"
+        : "Documento oculto do cliente",
+    };
   }
 }

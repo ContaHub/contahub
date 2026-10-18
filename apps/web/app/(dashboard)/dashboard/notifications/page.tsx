@@ -159,7 +159,7 @@ export default function NotificationsPage() {
               {waStatus === "connected" && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-[12px] text-green-700 flex gap-2 items-start">
                   <CheckCircle size={14} className="flex-shrink-0 mt-0.5" />
-                  <span>Mensagens sendo enviadas normalmente via WAHA.</span>
+                  <span>Mensagens sendo enviadas normalmente.</span>
                 </div>
               )}
             </div>

@@ -1,5 +1,6 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsArray, IsBoolean, MinLength, Matches } from "class-validator";
+import { IsString, IsEmail, IsOptional, IsEnum, IsArray, IsBoolean, MinLength, IsIn } from "class-validator";
 import { TaxRegime } from "@contahub/database";
+import { PORTAL_PERMISSIONS } from "@contahub/shared";
 
 export class CreateClientDto {
   @IsString() @MinLength(2) name!: string;
@@ -16,4 +17,9 @@ export class CreateClientDto {
   @IsArray() @IsOptional() tags?: string[];
   @IsBoolean() @IsOptional() portalEnabled?: boolean;
   @IsEmail() @IsOptional() portalEmail?: string;
+    // Cada item precisa estar no catálogo do shared: valor inventado dá 400.
+  // O spread cria um array comum, que o IsIn aceita em qualquer versão do class-validator.
+  @IsArray() @IsOptional() @IsIn([...PORTAL_PERMISSIONS], { each: true })
+  portalPermissions?: string[];
+  
 }

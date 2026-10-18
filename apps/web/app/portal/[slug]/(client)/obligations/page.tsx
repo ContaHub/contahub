@@ -2,17 +2,18 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import { usePortalClient } from "@/components/portal/PortalClientProvider";
 import { getPortalObligations, PortalObligation, OBLIGATION_LABELS, STATUS_CONFIG, MONTHS } from "@/lib/portal";
 
 export default function ClientObligationsPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { user } = useUser();
   const { getToken } = useAuth();
+  const { client, can } = usePortalClient();
+  const clientId = client?.id ?? "";
   const [obligations, setObligations] = useState<PortalObligation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientId, setClientId] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [obligationForUpload, setObligationForUpload] = useState<PortalObligation | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -26,30 +27,17 @@ export default function ClientObligationsPage() {
 
   useEffect(() => {
     async function load() {
-      const email = user?.primaryEmailAddress?.emailAddress;
-      if (!email) return;
-
       try {
         const token = await getToken();
-        if (!token) return;
-
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
-        const res = await fetch(
-          `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!res.ok) return;
-        const { data } = await res.json();
-
-        setClientId(data.id);
-        const obs = await getPortalObligations(slug, data.id, token);
+        if (!token || !client) return;
+        const obs = await getPortalObligations(slug, client.id, token);
         setObligations(obs.data);
       } finally {
         setLoading(false);
       }
     }
-    if (user) load();
-  }, [user, slug]);
+    load();
+  }, [client?.id, slug]);
 
   async function handleComprovanteUpload() {
   if (!uploadFile || !obligationForUpload || !clientId) return;
@@ -292,7 +280,7 @@ const filteredObligations = obligations.filter((ob) => {
                           )}
                         </td>
                         <td className="py-4 pr-6">
-                          {(ob.status === "PENDING" || ob.status === "OVERDUE") && (
+                          {(ob.status === "PENDING" || ob.status === "OVERDUE") && can("SUBMIT_COMPROVANTE") && (
                             <button
                               onClick={() => { setObligationForUpload(ob); setUploadFile(null); setUploadError(""); }}
                               className="text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"

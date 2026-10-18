@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import { usePortalClient } from "@/components/portal/PortalClientProvider";
 import { getPortalClientDownloadUrl, formatFileSize } from "@/lib/portal";
 
 function DocTypeIcon({ name, mimeType }: { name: string; mimeType?: string }) {
@@ -50,12 +51,11 @@ interface Report {
 export default function ClientReportsPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { user } = useUser();
   const { getToken } = useAuth();
-
+  const { client, can } = usePortalClient();
+  const clientId = client?.id ?? "";
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientId, setClientId] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({});
   const [showRevisionInput, setShowRevisionInput] = useState<string | null>(null);
@@ -76,26 +76,16 @@ export default function ClientReportsPage() {
 
   useEffect(() => {
     async function init() {
-      const email = user?.primaryEmailAddress?.emailAddress;
-      if (!email) return;
       try {
         const token = await getToken();
-        if (!token) return;
-
-        const res = await fetch(
-          `${API_URL}/api/v1/portal/${slug}/client-by-email?email=${encodeURIComponent(email)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!res.ok) return;
-        const { data } = await res.json();
-        setClientId(data.id);
-        await loadReports(data.id, token);
-      } catch {
+        if (!token || !client) return;
+        await loadReports(client.id, token);
+      } finally {
         setLoading(false);
       }
     }
-    if (user) init();
-  }, [user, slug]);
+    init();
+  }, [client?.id, slug]); 
 
   async function handleDownload(report: Report) {
     setDownloading(report.id);
