@@ -17,6 +17,7 @@ import {
   buildDocumentSharedWhatsapp,
   buildDocumentForReviewWhatsapp,
   buildObligationCreatedWhatsapp,
+  buildObligationDueDateChangedWhatsapp,
   type PortalPermission,
 } from "@contahub/shared";
 import { JobsProducerService } from "./jobs-producer.service";
@@ -81,6 +82,37 @@ export class PortalNoticesService {
       );
     });
   }
+
+    // ── Vencimento de obrigação alterado (aba Obrigações) ──────────────────────
+    async notifyObligationDueDateChanged(p: {
+        workspaceId: string;
+        clientId: string;
+        obligationId: string;
+        obligationType: string;
+        competenceMonth: number;
+        competenceYear: number;
+        previousDueDate: Date;
+        dueDate: Date;
+    }): Promise<void> {
+        await this.safely(`vencimento ${p.obligationId}`, async () => {
+        const r = await this.resolveRecipient(p.workspaceId, p.clientId, "VIEW_OBLIGATIONS");
+        if (!r) return;
+        await this.dispatch(
+            r,
+            buildObligationDueDateChangedWhatsapp({
+            recipientName: r.name,
+            workspaceName: r.workspaceName,
+            portalUrl: r.portalUrl,
+            obligationType: p.obligationType,
+            competence: `${String(p.competenceMonth).padStart(2, "0")}/${p.competenceYear}`,
+            previousDueDate: dateBR.format(p.previousDueDate),
+            dueDate: dateBR.format(p.dueDate),
+            }),
+            // Inclui o novo prazo: duas mudanças diferentes avisam, a mesma mudança repetida não
+            `notice-obl-due-${p.obligationId}-${p.dueDate.toISOString().slice(0, 10)}`,
+        );
+        });
+    }
 
   // ── Obrigação lançada (aba Obrigações) ─────────────────────────────────────
   async notifyObligationCreated(p: {

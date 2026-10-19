@@ -59,6 +59,17 @@ function portalLink(portalUrl: string, path: string): string {
   return `${portalUrl.replace(/\/+$/, "")}/${path}`;
 }
 
+const OBLIGATION_TYPE_LABELS: Record<string, string> = {
+  DARF: "DARF", DAS: "DAS (Simples Nacional)", DEFIS: "DEFIS",
+  SPED_CONTABIL: "SPED Contábil", SPED_FISCAL: "SPED Fiscal",
+  REINF: "EFD-Reinf", ESOCIAL: "eSocial", DIRF: "DIRF",
+  RAIS: "RAIS", GIA: "GIA", PGDAS: "PGDAS-D", OUTRO: "Outro",
+};
+
+function obligationTypeLabel(type: string): string {
+  return OBLIGATION_TYPE_LABELS[type] ?? type.replace(/_/g, " ");
+}
+
 interface PortalNoticeBase {
   recipientName: string;
   workspaceName: string;
@@ -145,6 +156,39 @@ export function buildObligationCreatedWhatsapp({
     ``,
     `📋 *${cleanLabel(obligationType)}* — competência ${competence}`,
     `📅 Vencimento: ${dueDate}`,
+    ``,
+    `🔗 Detalhes: ${portalLink(portalUrl, "obligations")}`,
+  ].join("\n");
+}
+
+export interface ObligationDueDateChangedInput extends PortalNoticeBase {
+  obligationType: string;
+  /** "05/2026" */
+  competence: string;
+  /** "20/05/2026" */
+  previousDueDate: string;
+  /** "25/05/2026" */
+  dueDate: string;
+}
+
+// Vencimento alterado pelo escritório. Sem valor, de propósito.
+export function buildObligationDueDateChangedWhatsapp({
+  recipientName,
+  workspaceName,
+  portalUrl,
+  obligationType,
+  competence,
+  previousDueDate,
+  dueDate,
+}: ObligationDueDateChangedInput): string {
+  return [
+    `Olá, ${recipientName}! 👋`,
+    ``,
+    `O *${workspaceName}* alterou o vencimento de uma obrigação:`,
+    ``,
+    `📋 *${cleanLabel(obligationTypeLabel(obligationType))}* — competência ${competence}`,
+    `📅 Antes: ${previousDueDate}`,
+    `📅 Agora: *${dueDate}*`,
     ``,
     `🔗 Detalhes: ${portalLink(portalUrl, "obligations")}`,
   ].join("\n");

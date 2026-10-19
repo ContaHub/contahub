@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException, Logger } from "@nestjs/common";
 import { prisma, ObligationStatus } from "@contahub/database";
 import { CreateObligationDto } from "./dto/create-obligation.dto";
+import { PortalNoticesService } from "../jobs/portal-notices.service";
 
 @Injectable()
 export class FiscalService {
   private readonly logger = new Logger(FiscalService.name);
+
+  constructor(private readonly notices: PortalNoticesService) {}
 
   // Hoje em Brasília, expresso como meia-noite UTC — o mesmo formato em que dueDate é salvo.
   // Comparar com new Date() reintroduziria o erro de um dia.
@@ -114,6 +117,30 @@ export class FiscalService {
 
     const changeLog = changes.length > 0 ? ` | Alterações: ${changes.join(", ")}` : " | Sem alterações detectadas";
     this.logger.log(`✏️ Editada — ${data.type} | Cliente: ${data.client?.tradeName}${changeLog}`);
+
+        // Avisa o cliente só quando o vencimento mudou de fato (comparando as datas gravadas, em UTC)
+    const dueChanged =
+      data.dueDate.toISOString().slice(0, 10) !== existing.dueDate.toISOString().slice(0, 10);
+    const stillOpen = !["COMPLETED", "CANCELED"].includes(String(data.status));
+
+    if (
+      dueChanged &&
+      stillOpen &&
+      data.competenceMonth &&
+      data.competenceYear &&
+      data.dueDate >= this.todayUtcMidnightBRT()
+    ) {
+      await this.notices.notifyObligationDueDateChanged({
+        workspaceId,
+        clientId: data.clientId,
+        obligationId: data.id,
+        obligationType: String(data.type),
+        competenceMonth: data.competenceMonth,
+        competenceYear: data.competenceYear,
+        previousDueDate: existing.dueDate,
+        dueDate: data.dueDate,
+      });
+    }
 
     return { data, message: "Obrigação atualizada" };
   }
