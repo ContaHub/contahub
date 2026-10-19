@@ -8,6 +8,7 @@ import {
   PORTAL_PERMISSIONS,
   PORTAL_PERMISSION_LABELS,
   PORTAL_PRESETS,
+  normalizeWhatsappNumber,
 } from "@contahub/shared";
 import type { PortalPermission, PortalPresetKey } from "@contahub/shared";
 
@@ -182,6 +183,11 @@ function togglePermission(p: PortalPermission) {
 }
 
 const currentPreset = detectPreset(form.portalPermissions);
+
+// Mesma regra do backend (PortalNoticesService): WhatsApp, com fallback para telefone
+const hasValidWhatsapp = !!(
+  normalizeWhatsappNumber(form.whatsapp) ?? normalizeWhatsappNumber(form.phone)
+);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -454,6 +460,33 @@ const currentPreset = detectPreset(form.portalPermissions);
                   </p>
                 </div>
 
+                {!hasValidWhatsapp && (
+                  <div
+                    role="status"
+                    className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2.5 rounded-lg"
+                  >
+                    <svg
+                      className="w-4 h-4 flex-shrink-0 mt-px"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                      />
+                    </svg>
+                    <span>
+                      Este cliente não tem um WhatsApp válido cadastrado. Ele consegue acessar o portal, mas
+                      não receberá os avisos por WhatsApp (link de acesso, novos documentos e obrigações).
+                      Informe o número com DDD no campo WhatsApp ou Telefone, acima.
+                    </span>
+                  </div>
+                )}
+
                 {/* Permissões */}
                 <fieldset className="mt-4">
                   <legend className="block text-sm font-medium text-gray-700 mb-2">
@@ -523,3 +556,4 @@ const currentPreset = detectPreset(form.portalPermissions);
     </div>
   );
 }
+

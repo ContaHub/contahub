@@ -14,7 +14,7 @@ import CertificateModal from "@/components/certificates/CertificateModal";
 import { getClients, deleteClient, reactivateClient, resendPortalAccess } from "@/lib/clients";
 import { useAuth } from "@clerk/nextjs";
 import { consultarCnpjStatus } from "@/lib/cnpj";
-import { getClientDisplayName } from "@contahub/shared";
+import { getClientDisplayName, normalizeWhatsappNumber } from "@contahub/shared";
 import { getUnreadCounts } from "@/lib/communications";
 //import { ClientModalFree } from "@/components/clients/ClientModalFree";
 
@@ -22,6 +22,10 @@ import { getUnreadCounts } from "@/lib/communications";
 
 function clientInitials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
+function hasValidWhatsapp(c: any): boolean {
+  return !!(normalizeWhatsappNumber(c.whatsapp) ?? normalizeWhatsappNumber(c.phone));
 }
 
 const avatarColors = [
@@ -391,6 +395,16 @@ async function confirmResendAccess() {
                       {c.phone || c.whatsapp}
                     </p>
                   )}
+
+                  {c.portalEnabled && !hasValidWhatsapp(c) && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit"
+                      title="Portal habilitado, mas sem WhatsApp válido: o cliente não recebe avisos"
+                    >
+                      <AlertTriangle size={10} />
+                      Sem WhatsApp
+                    </span>
+                  )}
                 </div>
 
                 {/* Ações — sem alteração */}
@@ -443,6 +457,12 @@ async function confirmResendAccess() {
                   <p className="text-[12px] text-slate-500 truncate">
                     {c.cnpj ? formatCpfCnpj(c.cnpj) : "—"} · {formatTaxRegime(c.taxRegime)}
                   </p>
+                  {c.portalEnabled && !hasValidWhatsapp(c) && (
+                  <p className="text-[11px] text-amber-700 flex items-center gap-1 mt-0.5">
+                    <AlertTriangle size={10} className="flex-shrink-0" />
+                    Sem WhatsApp válido
+                  </p>
+                )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={c.status === "ACTIVE" ? "success" : "gray"}>
